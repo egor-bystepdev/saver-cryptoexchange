@@ -12,7 +12,6 @@ api_secret = os.environ["binance_api_secret"]
 
 
 # source: https://python-binance.readthedocs.io/en/latest/websockets.html
-
 # прослушивание с биржи n ответов
 
 
@@ -59,7 +58,7 @@ class SocketStorage:
             "INSERT INTO depth (time, msg) VALUES (?,?)",
             [(int(calendar.timegm(time.gmtime())), message)],
         )
-        if self.cnt == 5:  # беру 15 ответов и закрываю сокет
+        if self.cnt == 5:  # беру 5 ответов и закрываю сокет
             self.sqlite_connection.commit()
             self.cursor.execute("""SELECT count(*) from depth""")
             print("count rows : ", self.cursor.fetchone())
@@ -79,8 +78,7 @@ def main():
 
     depth_handler = SocketStorage(
         "bnbbtc@depth", twm
-    )  # here we have problem with param <name>, bcs idk how find actual name, maybe symbol.to_lower() + "@" + type
-    # i think we won't to stop socket, it'a opportunity only for testing
+    )
 
     depth_stream_name = twm.start_depth_socket(
         callback=depth_handler.handle_socket_message, symbol=symbol
