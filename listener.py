@@ -36,7 +36,8 @@ class SocketStorage:
         self.cursor = None
         self.sqlite_connection = None
         try:
-            self.sqlite_connection = sqlite3.connect(self.db_path + ".db")
+            print(self.type_of_data, " connect")
+            self.sqlite_connection = sqlite3.connect(self.db_path + "_" + self.type_of_data + ".db")
             self.cursor = self.sqlite_connection.cursor()
             print("База данных создана и успешно подключена к SQLite")
 
@@ -118,9 +119,15 @@ def main():
         callback=SocketStorage("bnbbtc@depth", twm, "binance").handle_socket_message,
         symbol=symbol,
     )
+
+    kline_stream_name = twm.start_kline_socket(
+        callback=SocketStorage("bnbbtc@kline", twm, "binance").handle_socket_message,
+        symbol=symbol,
+    )
     twm.join()
     print("End")
     print(depth_stream_name)
+    print(kline_stream_name)
 
 
 if __name__ == "__main__":
