@@ -27,7 +27,8 @@ def create_dir(dir_name):
 
 
 class SocketStorage:
-    def __init__(self, name, twm, exchange):
+    def __init__(self, name, twm, exchange, symbol):
+        self.symbol = symbol
         self.stream_name = name
         self.cnt = 0
         self.twm = twm
@@ -40,7 +41,8 @@ class SocketStorage:
 
     def upd_db_path(self):
         create_dir(self.exchange)
-        self.db_path = self.exchange + "/" + self.type_of_data
+        create_dir(self.exchange + "/" + self.symbol)
+        self.db_path = self.exchange + "/" + self.symbol + "/" + self.type_of_data
 
     def upd_table_name(self, server_time):
         if self.table_name == None:
@@ -142,12 +144,12 @@ def main():
     twm.start()  # обязательно до старта потоков прослушивания
 
     depth_stream_name = twm.start_depth_socket(
-        callback=SocketStorage("bnbbtc@depth", twm, "binance").handle_socket_message,
+        callback=SocketStorage("bnbbtc@depth", twm, "binance", symbol).handle_socket_message,
         symbol=symbol,
     )
 
     kline_stream_name = twm.start_kline_socket(
-        callback=SocketStorage("bnbbtc@kline", twm, "binance").handle_socket_message,
+        callback=SocketStorage("bnbbtc@kline", twm, "binance", symbol).handle_socket_message,
         symbol=symbol,
     )
     twm.join()
