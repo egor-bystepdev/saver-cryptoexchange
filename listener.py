@@ -1,8 +1,8 @@
 import time
-import sqlite3
 import json
 import os
 import sys
+from mysql.connector import connect, Error
 
 from binance import ThreadedWebsocketManager
 
@@ -18,14 +18,6 @@ def get_timestamp_ms_gtm0():
     return time.time_ns() // 1_000_000
 
 
-def create_dir(dir_name):
-    try:
-        os.mkdir(dir_name)
-        print("create dir : ", dir_name)
-    except FileExistsError:
-        print("dir already exists : ", dir_name)
-
-
 class SocketStorage:
     def __init__(self, name, twm, exchange, symbol):
         self.symbol = symbol
@@ -39,10 +31,8 @@ class SocketStorage:
         self.table_name = None
         self.current_time_for_table_name = None
 
-    def upd_db_path(self):
-        create_dir(self.exchange)
-        create_dir(self.exchange + "/" + self.symbol)
-        self.db_path = self.exchange + "/" + self.symbol + "/" + self.type_of_data
+    def upd_db_name(self):
+        self.db_name = self.exchange + "_" + self.symbol + "_" + self.type_of_data
 
     def upd_table_name(self, server_time):
         if self.table_name == None:
@@ -62,41 +52,36 @@ class SocketStorage:
 
     def connect_to_db(self):
         self.cursor = None
-        self.sqlite_connection = None
+        self.db_connection = None
         try:
-            self.upd_db_path()
-            print(self.type_of_data, " connect", self.db_path)
-            self.sqlite_connection = sqlite3.connect(self.db_path + ".db")
-            self.cursor = self.sqlite_connection.cursor()
-            print("База данных создана и успешно подключена к SQLite")
+            self.upd_db_name()
+            print(self.type_of_data, " connect", self.db_name)
+            self.db_connection = connect(
+                user="user", password="password", host="127.0.0.1"  # введите свой логин и пароль, не пушьте их как я, а лучше сделайте через переменные окружения.
+            )
+            self.cursor = self.db_connection.cursor()
+            self.cursor.execute("create database if not exists " + self.db_name)
+            self.cursor.execute("use " + self.db_name)
+            print("База данных создана и успешно подключена к MySQL")
 
-            self.sqlite_select_query = "select sqlite_version();"
+            self.sqlite_select_query = "select version();"
             self.cursor.execute(self.sqlite_select_query)
             record = self.cursor.fetchall()
-            print("Версия базы данных SQLite: ", record)
+            print("Версия базы данных MySql: ", record)
             return True
-        except sqlite3.Error as error:
-            print("Ошибка при подключении к sqlite", error)
-            return False
+        except Error as e:
+            print(e)
+            self.twm.stop()
 
     def create_table(self):
         self.cursor.execute(
-            """ SELECT count(name) FROM sqlite_master WHERE type='table' AND name='"""
+            "CREATE TABLE IF NOT EXISTS "
             + self.table_name
-            + """' """
+            + "(timestamp BIGINT PRIMARY KEY, data TEXT);"
         )
-        if self.cursor.fetchone()[0] != 1:  # чек что такой таблицы ещё нет
-            print("Create table in db :", self.db_path, " with name :", self.table_name)
-            self.cursor.execute(
-                """CREATE TABLE """
-                + self.table_name
-                + """
-                        (time int, msg text)
-                """
-            )
 
     def close_connection_to_db(self):
-        self.sqlite_connection.commit()
+        self.db_connection.commit()
         self.cursor.execute("""SELECT count(*) from """ + self.table_name)
         print("count rows : ", self.cursor.fetchone())
         # если захочется посмотреть данные, то
@@ -121,15 +106,21 @@ class SocketStorage:
         self.cnt += 1
         self.count_of_insert += 1
         message = json.dumps(msg)  # перевожу dict в строку чтобы записать в бд
-        self.cursor.executemany(
-            "INSERT INTO " + self.table_name + " (time, msg) VALUES (?,?)",
-            [(server_time, message)],
+        message = message.replace('"', '\\"')
+        self.cursor.execute(
+            "INSERT INTO "
+            + self.table_name
+            + " (timestamp, data) VALUES ("
+            + str(server_time)
+            + ', "'
+            + message
+            + '");'
         )
         if self.count_of_insert == self.capacity_for_db:
-            self.sqlite_connection.commit()
+            self.db_connection.commit()
             print("COMMIT")
             self.count_of_insert = 0
-        if self.cnt == 500:  # беру 500 ответов и закрываю сокет
+        if self.cnt == 15:  # беру 500 ответов и закрываю сокет
             self.close_connection_to_db()
             self.twm.stop()
 
@@ -144,12 +135,16 @@ def main():
     twm.start()  # обязательно до старта потоков прослушивания
 
     depth_stream_name = twm.start_depth_socket(
-        callback=SocketStorage("bnbbtc@depth", twm, "binance", symbol).handle_socket_message,
+        callback=SocketStorage(
+            "bnbbtc@depth", twm, "binance", symbol
+        ).handle_socket_message,
         symbol=symbol,
     )
 
     kline_stream_name = twm.start_kline_socket(
-        callback=SocketStorage("bnbbtc@kline", twm, "binance", symbol).handle_socket_message,
+        callback=SocketStorage(
+            "bnbbtc@kline", twm, "binance", symbol
+        ).handle_socket_message,
         symbol=symbol,
     )
     twm.join()
