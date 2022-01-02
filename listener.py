@@ -8,6 +8,7 @@ from binance import ThreadedWebsocketManager
 
 api_key = os.environ["binance_api_key"]
 api_secret = os.environ["binance_api_secret"]
+sql_password = os.environ["sql_password"]
 
 
 # source: https://python-binance.readthedocs.io/en/latest/websockets.html
@@ -57,7 +58,7 @@ class SocketStorage:
             self.upd_db_name()
             print(self.type_of_data, " connect", self.db_name)
             self.db_connection = connect(
-                user="user", password="password", host="127.0.0.1"  # введите свой логин и пароль, не пушьте их как я, а лучше сделайте через переменные окружения.
+                user="root", password=sql_password, host="127.0.0.1"
             )
             self.cursor = self.db_connection.cursor()
             self.cursor.execute("create database if not exists " + self.db_name)
@@ -84,9 +85,6 @@ class SocketStorage:
         self.db_connection.commit()
         self.cursor.execute("""SELECT count(*) from """ + self.table_name)
         print("count rows : ", self.cursor.fetchone())
-        # если захочется посмотреть данные, то
-        # curcor.execute("""select * from depth""")
-        # print(cursor.fetchall())
         self.cursor.close()
 
     def handle_socket_message(self, msg):
@@ -120,9 +118,9 @@ class SocketStorage:
             self.db_connection.commit()
             print("COMMIT")
             self.count_of_insert = 0
-        if self.cnt == 15:  # беру 500 ответов и закрываю сокет
-            self.close_connection_to_db()
-            self.twm.stop()
+        #if self.cnt == 5000000:  # беру 500 ответов и закрываю сокет
+        #    self.close_connection_to_db()
+        #    self.twm.stop()
 
 
 def main():
