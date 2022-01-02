@@ -49,8 +49,6 @@ def get_all_msg_in_db(
                     + ";"
                 )
                 result += cursor.fetchall()
-            else:
-                print("kekos")
         cursor.close()
         return result
 
