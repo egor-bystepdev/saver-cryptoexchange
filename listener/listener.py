@@ -21,6 +21,11 @@ def get_timestamp_ms_gtm0():
 
 class SocketStorage:
     def __init__(self, name, twm, exchange, symbol):
+        self.type_of_data = None
+        self.sqlite_select_query = None
+        self.cursor = None
+        self.db_connection = None
+        self.db_name = None
         self.symbol = symbol
         self.stream_name = name
         self.cnt = 0
@@ -33,15 +38,15 @@ class SocketStorage:
         self.current_time_for_table_name = None
 
     def upd_db_name(self):
-        self.db_name = self.exchange + "_" + self.symbol + "_" + self.type_of_data
+        self.db_name = self.exchange + "_" + self.symbol
 
     def upd_table_name(self, server_time):
-        if self.table_name == None:
+        if self.table_name is None:
             self.table_name = "data_" + str(
                 server_time - server_time % self.time_bucket_db
             )
             self.current_time_for_table_name = (
-                server_time - server_time % self.time_bucket_db
+                    server_time - server_time % self.time_bucket_db
             )
             return True
         else:
@@ -78,7 +83,7 @@ class SocketStorage:
         self.cursor.execute(
             "CREATE TABLE IF NOT EXISTS "
             + self.table_name
-            + "(timestamp BIGINT PRIMARY KEY, data TEXT);"
+            + "(timestamp BIGINT PRIMARY KEY, data_type TEXT, data TEXT);"
         )
 
     def close_connection_to_db(self):
@@ -88,14 +93,13 @@ class SocketStorage:
         self.cursor.close()
 
     def handle_socket_message(self, msg):
-        receive_time = get_timestamp_ms_gtm0()
         server_time = msg["E"]
 
         print("receive time : ", get_timestamp_ms_gtm0(), " server time : ", msg["E"])
         # print(msg)
         if self.cnt == 0:
             self.type_of_data = msg["e"]
-            if self.connect_to_db() == False:
+            if not self.connect_to_db():
                 self.twm.stop()  # !
         if self.upd_table_name(server_time):
             self.create_table()
@@ -108,9 +112,11 @@ class SocketStorage:
         self.cursor.execute(
             "INSERT INTO "
             + self.table_name
-            + " (timestamp, data) VALUES ("
+            + " (timestamp, data_type, data) VALUES ("
             + str(server_time)
             + ', "'
+            + self.type_of_data
+            + '", "'
             + message
             + '");'
         )
@@ -118,7 +124,7 @@ class SocketStorage:
             self.db_connection.commit()
             print("COMMIT")
             self.count_of_insert = 0
-        #if self.cnt == 5000000:  # беру 500 ответов и закрываю сокет
+        # if self.cnt == 5000000:  # беру 500 ответов и закрываю сокет
         #    self.close_connection_to_db()
         #    self.twm.stop()
 

@@ -15,14 +15,14 @@ def is_table_exists(cursor, name):
         return False
 
 
-# возврат всех ответов по типу данных для биржи по интрументы с timestamp1 до timestamp, возвращемое значение лист картежей, возможно надо будет ещё и чекать если ошибка в получении произошла
+# возврат всех ответов по типу данных для биржи по интрументы с timestamp1 до timestamp, возвращемое значение лист
+# картежей, возможно надо будет ещё и чекать если ошибка в получении произошла
 def get_all_msg_in_db(
-    exchange: str,
-    symbol: str,
-    data_type: str,
-    timestamp1: int,
-    timestamp2: int,
-    timestamp_in_ms=False,
+        exchange: str,
+        symbol: str,
+        timestamp1: int,
+        timestamp2: int,
+        timestamp_in_ms=False,
 ):
     try:
         if not timestamp_in_ms:
@@ -33,7 +33,7 @@ def get_all_msg_in_db(
         timestamp2 += bucket_size - timestamp2 % bucket_size
         db_connection = connect(user="root", password=sql_password, host="127.0.0.1")
         cursor = db_connection.cursor()
-        cursor.execute("use " + "_".join([exchange, symbol, data_type]) + ";")
+        cursor.execute("use " + "_".join([exchange, symbol]) + ";")
         result = []
         for timestamp in range(timestamp1, timestamp2, bucket_size):
             table_name = "_".join(["data", str(timestamp)])
@@ -52,9 +52,8 @@ def get_all_msg_in_db(
         cursor.close()
         return result
 
-    except Exception as e:
+    except Exception:
         logging.error(traceback.format_exc())
         return []
-
 
 #  f = get_all_msg_in_db("binance", "BNBBTC", "depthUpdate", 1640808000000, 1641153600001, timestamp_in_ms=True)
