@@ -42,7 +42,7 @@ class SocketStorage:
 
     def upd_table_name(self, server_time):
         if self.table_name is None:
-            self.table_name = "data_" + str(
+            self.table_name = self.type_of_data + "_" + str(
                 server_time - server_time % self.time_bucket_db
             )
             self.current_time_for_table_name = (
@@ -52,7 +52,7 @@ class SocketStorage:
         else:
             if server_time >= self.current_time_for_table_name + self.time_bucket_db:
                 self.current_time_for_table_name += self.time_bucket_db
-                self.table_name = "data_" + str(self.current_time_for_table_name)
+                self.table_name = self.type_of_data + "_" + str(self.current_time_for_table_name)
                 return True
         return False
 
@@ -83,7 +83,7 @@ class SocketStorage:
         self.cursor.execute(
             "CREATE TABLE IF NOT EXISTS "
             + self.table_name
-            + "(timestamp BIGINT PRIMARY KEY, data_type TEXT, data TEXT);"
+            + "(timestamp BIGINT PRIMARY KEY, data TEXT);"
         )
 
     def close_connection_to_db(self):
@@ -112,11 +112,9 @@ class SocketStorage:
         self.cursor.execute(
             "INSERT INTO "
             + self.table_name
-            + " (timestamp, data_type, data) VALUES ("
+            + " (timestamp, data) VALUES ("
             + str(server_time)
             + ', "'
-            + self.type_of_data
-            + '", "'
             + message
             + '");'
         )
@@ -124,7 +122,7 @@ class SocketStorage:
             self.db_connection.commit()
             print("COMMIT")
             self.count_of_insert = 0
-        # if self.cnt == 5000000:  # беру 500 ответов и закрываю сокет
+        # if self.cnt == 5000000:  
         #    self.close_connection_to_db()
         #    self.twm.stop()
 
