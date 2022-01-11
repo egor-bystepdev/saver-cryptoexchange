@@ -35,20 +35,21 @@ def get_all_msg_in_db(
         cursor = db_connection.cursor()
         cursor.execute("use " + "_".join([exchange, symbol]) + ";")
         result = []
-        for timestamp in range(timestamp1, timestamp2, bucket_size):
-            table_name = "_".join(["data", str(timestamp)])
+        for type_of_data in ["trade", "kline", "depthUpdate"]:
+            for timestamp in range(timestamp1, timestamp2, bucket_size):
+                table_name = "_".join([type_of_data, str(timestamp)])
 
-            if is_table_exists(cursor, table_name):
-                cursor.execute(
-                    "select * from "
-                    + table_name
-                    + " where timestamp >= "
-                    + str(timestamp1)
-                    + " and timestamp <= "
-                    + str(timestamp2)
-                    + ";"
-                )
-                result += cursor.fetchall()
+                if is_table_exists(cursor, table_name):
+                    cursor.execute(
+                        "select * from "
+                        + table_name
+                        + " where timestamp >= "
+                        + str(timestamp1)
+                        + " and timestamp <= "
+                        + str(timestamp2)
+                        + ";"
+                    )
+                    result += cursor.fetchall()
         cursor.close()
         return result
 

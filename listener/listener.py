@@ -4,7 +4,7 @@ import os
 import sys
 from mysql.connector import connect, Error
 
-from binance import ThreadedWebsocketManager
+from binance import ThreadedWebsocketManager, threaded_stream
 
 api_key = os.environ["binance_api_key"]
 api_secret = os.environ["binance_api_secret"]
@@ -20,18 +20,17 @@ def get_timestamp_ms_gtm0():
 
 
 class SocketStorage:
-    def __init__(self, name, twm, exchange, symbol):
+    def __init__(self, twm, exchange, symbol):
         self.type_of_data = None
         self.sqlite_select_query = None
         self.cursor = None
         self.db_connection = None
         self.db_name = None
         self.symbol = symbol
-        self.stream_name = name
         self.cnt = 0
         self.twm = twm
         self.exchange = exchange
-        self.capacity_for_db = 1000  # после скольких инсертов делаем коммит
+        self.capacity_for_db = 1  # после скольких инсертов делаем коммит, видимо всегда будет 1 и этот функционал надо будет выпилить
         self.count_of_insert = 0
         self.time_bucket_db = 3 * 60 * 60 * 1000  # -- как часто обновляем бд, всё в ms
         self.table_name = None
@@ -40,28 +39,29 @@ class SocketStorage:
     def upd_db_name(self):
         self.db_name = self.exchange + "_" + self.symbol
 
-    def upd_table_name(self, server_time):
+    def upd_table_time(self, server_time):
         if self.table_name is None:
-            self.table_name = self.type_of_data + "_" + str(
-                server_time - server_time % self.time_bucket_db
-            )
             self.current_time_for_table_name = (
-                    server_time - server_time % self.time_bucket_db
+                server_time - server_time % self.time_bucket_db
             )
             return True
         else:
             if server_time >= self.current_time_for_table_name + self.time_bucket_db:
                 self.current_time_for_table_name += self.time_bucket_db
-                self.table_name = self.type_of_data + "_" + str(self.current_time_for_table_name)
                 return True
         return False
+
+    def upd_table_name(self):
+        self.table_name = (
+            self.type_of_data + "_" + str(self.current_time_for_table_name)
+        )
 
     def connect_to_db(self):
         self.cursor = None
         self.db_connection = None
         try:
             self.upd_db_name()
-            print(self.type_of_data, " connect", self.db_name)
+            print(self.symbol, " connect", self.db_name)
             self.db_connection = connect(
                 user="root", password=sql_password, host="127.0.0.1"
             )
@@ -80,11 +80,12 @@ class SocketStorage:
             self.twm.stop()
 
     def create_table(self):
-        self.cursor.execute(
-            "CREATE TABLE IF NOT EXISTS "
-            + self.table_name
-            + "(timestamp BIGINT PRIMARY KEY, data TEXT);"
-        )
+        for type_of_data in ["trade", "kline", "depthUpdate"]:
+            self.cursor.execute(
+                "CREATE TABLE IF NOT EXISTS "
+                + "_".join([type_of_data, str(self.current_time_for_table_name)])
+                + "(timestamp BIGINT, data TEXT);"
+            )
 
     def close_connection_to_db(self):
         self.db_connection.commit()
@@ -93,16 +94,30 @@ class SocketStorage:
         self.cursor.close()
 
     def handle_socket_message(self, msg):
-        server_time = msg["E"]
-
-        print("receive time : ", get_timestamp_ms_gtm0(), " server time : ", msg["E"])
         # print(msg)
+        receive_time = get_timestamp_ms_gtm0()
+        msg = msg["data"]
+        server_time = msg["E"]
+        self.type_of_data = msg["e"]
+        msg["receive_time"] = receive_time
+
+        print(
+            self.type_of_data,
+            " -- receive time : ",
+            receive_time,
+            " server time : ",
+            server_time,
+            " currenct delta time : ",
+            receive_time - server_time,
+        )
         if self.cnt == 0:
-            self.type_of_data = msg["e"]
             if not self.connect_to_db():
                 self.twm.stop()  # !
-        if self.upd_table_name(server_time):
+        if self.upd_table_time(server_time):
+            self.upd_table_name()
             self.create_table()
+        else:
+            self.upd_table_name()
 
         print(self.cnt)
         self.cnt += 1
@@ -122,7 +137,7 @@ class SocketStorage:
             self.db_connection.commit()
             print("COMMIT")
             self.count_of_insert = 0
-        # if self.cnt == 5000000:  
+        # if self.cnt == 5000000:
         #    self.close_connection_to_db()
         #    self.twm.stop()
 
@@ -136,23 +151,19 @@ def main():
     twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
     twm.start()  # обязательно до старта потоков прослушивания
 
-    depth_stream_name = twm.start_depth_socket(
-        callback=SocketStorage(
-            "bnbbtc@depth", twm, "binance", symbol
-        ).handle_socket_message,
-        symbol=symbol,
+    streams = [
+        symbol.lower() + "@trade",
+        symbol.lower() + "@depth",
+        symbol.lower() + "@kline_1m",
+    ]
+    twm.start_multiplex_socket(
+        callback=SocketStorage(twm, "binance", symbol).handle_socket_message,
+        streams=streams,
     )
 
-    kline_stream_name = twm.start_kline_socket(
-        callback=SocketStorage(
-            "bnbbtc@kline", twm, "binance", symbol
-        ).handle_socket_message,
-        symbol=symbol,
-    )
+    print(*streams)
     twm.join()
     print("End")
-    print(depth_stream_name)
-    print(kline_stream_name)
 
 
 if __name__ == "__main__":
