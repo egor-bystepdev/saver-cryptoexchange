@@ -3,10 +3,9 @@ import json
 
 from fastapi import FastAPI
 
-app = FastAPI()
+CRYPTO_API = FastAPI()
 
-
-@app.get("/")
+@CRYPTO_API.get("/")
 def get_events(exchange: str, instrument: str, start_timestamp: int, finish_timestamp: int):
     ans = listener.get_all_msg_in_db(exchange, instrument, start_timestamp,
                                      finish_timestamp, True)
