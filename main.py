@@ -14,5 +14,4 @@ def get_events(exchange: str, instrument: str, start_timestamp: int, finish_time
     for i in ans:
         tmp = '[' + i[1] + ']'
         res += json.loads(tmp)
-    print(res)
     return json.dumps(res)
