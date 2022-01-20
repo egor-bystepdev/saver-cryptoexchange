@@ -1,7 +1,8 @@
-from mysql.connector import connect, Error
 import logging
-import traceback
 import os
+import traceback
+
+from mysql.connector import connect
 
 sql_password = os.environ["sql_password"]
 
@@ -22,7 +23,7 @@ def get_all_msg_in_db(
         symbol: str,
         timestamp1: int,
         timestamp2: int,
-        timestamp_in_ms=False,
+        timestamp_in_ms: bool = False,
 ):
     try:
         if not timestamp_in_ms:

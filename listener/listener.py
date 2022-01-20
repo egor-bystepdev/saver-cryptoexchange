@@ -1,10 +1,10 @@
-import time
 import json
 import os
 import sys
-from mysql.connector import connect, Error
+import time
 
-from binance import ThreadedWebsocketManager, threaded_stream
+from binance import ThreadedWebsocketManager
+from mysql.connector import connect, Error
 
 api_key = os.environ["binance_api_key"]
 api_secret = os.environ["binance_api_secret"]
@@ -30,7 +30,8 @@ class SocketStorage:
         self.cnt = 0
         self.twm = twm
         self.exchange = exchange
-        self.capacity_for_db = 1  # после скольких инсертов делаем коммит, видимо всегда будет 1 и этот функционал надо будет выпилить
+        self.capacity_for_db = 1  # после скольких инсертов делаем коммит, видимо всегда будет 1 и этот функционал
+        # надо будет выпилить
         self.count_of_insert = 0
         self.time_bucket_db = 3 * 60 * 60 * 1000  # -- как часто обновляем бд, всё в ms
         self.table_name = None
@@ -42,7 +43,7 @@ class SocketStorage:
     def upd_table_time(self, server_time):
         if self.table_name is None:
             self.current_time_for_table_name = (
-                server_time - server_time % self.time_bucket_db
+                    server_time - server_time % self.time_bucket_db
             )
             return True
         else:
@@ -53,7 +54,7 @@ class SocketStorage:
 
     def upd_table_name(self):
         self.table_name = (
-            self.type_of_data + "_" + str(self.current_time_for_table_name)
+                self.type_of_data + "_" + str(self.current_time_for_table_name)
         )
 
     def connect_to_db(self):
