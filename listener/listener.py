@@ -4,7 +4,7 @@ import sys
 import time
 
 from binance import ThreadedWebsocketManager
-from mysql.connector import connect, Error
+from mysql.connector import connect, Error, errorcode
 
 api_key = os.environ["binance_api_key"]
 api_secret = os.environ["binance_api_secret"]
@@ -76,26 +76,52 @@ class SocketStorage:
             record = self.cursor.fetchall()
             print("Версия базы данных MySql: ", record)
             return True
-        except Error as e:
-            print(e)
+        except Error as err:
+            print("Ошибка в connect_to_db:\n\t")
+            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+                print("Неправильный пароль или пользователь: ", err)
+            elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                print("Базы данных не существует: ", err)
+            else:
+                print(err)
             self.twm.stop()
+            exit(1)
 
     def create_table(self):
         for type_of_data in ["trade", "kline", "depthUpdate"]:
-            self.cursor.execute(
-                "CREATE TABLE IF NOT EXISTS "
-                + "_".join([type_of_data, str(self.current_time_for_table_name)])
-                + "(timestamp BIGINT, data TEXT);"
-            )
+            try:
+                self.cursor.execute(
+                    "CREATE TABLE IF NOT EXISTS "
+                    + "_".join([type_of_data, str(self.current_time_for_table_name)])
+                    + "(timestamp BIGINT, data TEXT);"
+                )
+            except Error as err:
+                print("Ошибка в create_table:\n\t")
+                if err.errno == errorcode.ProgrammingError:
+                    print("Синтаксическая ошибка в SQL запросе: ", err)
+                elif err.errno == errorcode.DatabaseError:
+                    print("Ошибка с базой данных: ", err)
+                else:
+                    print(err)
+                
 
     def close_connection_to_db(self):
         self.db_connection.commit()
-        self.cursor.execute("""SELECT count(*) from """ + self.table_name)
-        print("count rows : ", self.cursor.fetchone())
-        self.cursor.close()
+        try:
+            self.cursor.execute("""SELECT count(*) from """ + self.table_name)
+
+            print("count rows : ", self.cursor.fetchone())
+            self.cursor.close()
+        except Error as err:
+            print("Ошибка в close_connection_to_db:\n\t")
+            if err.errno == errorcode.ProgrammingError:
+                print("Синтаксическая ошибка в SQL запросе: ", err)
+            elif err.errno == errorcode.DatabaseError:
+                print("Ошибка с базой данных: ", err)
+            else:
+                print(err)
 
     def handle_socket_message(self, msg):
-        # print(msg)
         receive_time = get_timestamp_ms_gtm0()
         msg = msg["data"]
         server_time = msg["E"]
@@ -108,12 +134,12 @@ class SocketStorage:
             receive_time,
             " server time : ",
             server_time,
-            " currenct delta time : ",
+            " current delta time : ",
             receive_time - server_time,
         )
         if self.cnt == 0:
-            if not self.connect_to_db():
-                self.twm.stop()  # !
+            self.connect_to_db()
+
         if self.upd_table_time(server_time):
             self.upd_table_name()
             self.create_table()
@@ -123,24 +149,34 @@ class SocketStorage:
         print(self.cnt)
         self.cnt += 1
         self.count_of_insert += 1
-        message = json.dumps(msg)  # перевожу dict в строку чтобы записать в бд
+        message = json.dumps(msg)  # перевожу dict в строку, чтобы записать в бд
         message = message.replace('"', '\\"')
-        self.cursor.execute(
-            "INSERT INTO "
-            + self.table_name
-            + " (timestamp, data) VALUES ("
-            + str(server_time)
-            + ', "'
-            + message
-            + '");'
-        )
+
+        try:
+            self.cursor.execute(
+                "INSERT INTO "
+                + self.table_name
+                + " (timestamp, data) VALUES ("
+                + str(server_time)
+                + ', "'
+                + message
+                + '");'
+            )
+        except Error as err:
+            print("Ошибка в handle_socket_message:\n\t")
+            if err.errno == errorcode.ProgrammingError:
+                print("Синтаксическая ошибка в SQL запросе: ", err)
+            elif err.errno == errorcode.IntegrityError:
+                print("Проблема с записью ключей: ", err)
+            elif err.errno == errorcode.DatabaseError:
+                print("Ошибка с базой данных: ", err)
+            else:
+                print(err)
+
         if self.count_of_insert == self.capacity_for_db:
             self.db_connection.commit()
             print("COMMIT")
             self.count_of_insert = 0
-        # if self.cnt == 5000000:
-        #    self.close_connection_to_db()
-        #    self.twm.stop()
 
 
 def main():
