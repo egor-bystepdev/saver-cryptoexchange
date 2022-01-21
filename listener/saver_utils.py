@@ -2,7 +2,7 @@ import logging
 import os
 import traceback
 
-from mysql.connector import connect
+from mysql.connector import connect, Error, errorcode
 
 sql_password = os.environ["sql_password"]
 
@@ -10,13 +10,10 @@ sql_password = os.environ["sql_password"]
 def is_table_exists(cursor, name):
     cursor.execute("show tables like '" + name + "';")
     result_query = cursor.fetchall()
-    if len(result_query) != 0:
-        return True
-    else:
-        return False
+    return len(result_query) != 0
 
 
-# возврат всех ответов по типу данных для биржи по интрументы с timestamp1 до timestamp, возвращемое значение лист
+# возврат всех ответов по типу данных для биржи по интрументы с timestamp1 до timestamp2, возвращемое значение лист
 # картежей, возможно надо будет ещё и чекать если ошибка в получении произошла
 def get_all_msg_in_db(
         exchange: str,
@@ -53,9 +50,21 @@ def get_all_msg_in_db(
                     result += cursor.fetchall()
         cursor.close()
         return result
+    except Error as err:
+        print("Ошибка в get_all_msg_in_db:\n\t")
+        if err.errno == errorcode.ProgrammingError:
+            print("Синтаксическая ошибка в SQL запросе: ", err)
+        elif err.errno == errorcode.IntegrityError:
+            print("Проблема с записью ключей: ", err)
+        elif err.errno == errorcode.DatabaseError:
+            print("Ошибка с базой данных: ", err)
+        elif err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+            print("Неправильный пароль или пользователь: ", err)
+        elif err.errno == errorcode.ER_BAD_DB_ERROR:
+            print("Базы данных не существует: ", err)
+        else:
+            print(err)
 
-    except Exception:
         logging.error(traceback.format_exc())
-        return []
 
-#  f = get_all_msg_in_db("binance", "BNBBTC", "depthUpdate", 1640808000000, 1641153600001, timestamp_in_ms=True)
+        return []
