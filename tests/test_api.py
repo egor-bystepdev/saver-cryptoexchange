@@ -1,4 +1,4 @@
-import requests, pytest
+import requests
 
 
 def test_check_status_code_equals_200():
