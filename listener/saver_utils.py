@@ -22,6 +22,9 @@ def get_all_msg_in_db(
         timestamp2: int,
         timestamp_in_ms: bool = False,
 ):
+    if timestamp1 > timestamp2:
+        return []
+
     try:
         if not timestamp_in_ms:
             timestamp1 *= 1000
