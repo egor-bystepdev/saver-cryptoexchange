@@ -30,14 +30,14 @@ def get_all_msg_in_db(
             timestamp1 *= 1000
             timestamp2 *= 1000
         bucket_size = 3 * 60 * 60 * 1000  # мб потом прокинется в переменные окружения
-        timestamp1 -= timestamp1 % bucket_size
-        timestamp2 += bucket_size - timestamp2 % bucket_size
+        start_timestamp = timestamp1 - timestamp1 % bucket_size
+        finish_timestamp = timestamp2 + bucket_size - timestamp2 % bucket_size
         db_connection = connect(user="root", password=sql_password, host="127.0.0.1")
         cursor = db_connection.cursor()
         cursor.execute("use " + "_".join([exchange, symbol]) + ";")
         result = []
         for type_of_data in ["trade", "kline", "depthUpdate"]:
-            for timestamp in range(timestamp1, timestamp2, bucket_size):
+            for timestamp in range(start_timestamp, finish_timestamp, bucket_size):
                 table_name = "_".join([type_of_data, str(timestamp)])
 
                 if is_table_exists(cursor, table_name):
