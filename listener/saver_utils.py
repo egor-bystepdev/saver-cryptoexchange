@@ -1,5 +1,6 @@
 import logging
 import os
+from sqlite3 import Timestamp
 import traceback
 
 from mysql.connector import connect, Error, errorcode
@@ -12,6 +13,13 @@ def is_table_exists(cursor, name):
     result_query = cursor.fetchall()
     return len(result_query) != 0
 
+def form_query(name, time1, time2):
+    query = "select * from " + name
+    query += " where timestamp >= " + str(time1)
+    query += " and timestamp <= " + str(time2)
+    query += ';'
+
+    return query
 
 # возврат всех ответов по типу данных для биржи по интрументы с timestamp1 до timestamp2, возвращемое значение лист
 # картежей, возможно надо будет ещё и чекать если ошибка в получении произошла
@@ -40,16 +48,11 @@ def get_all_msg_in_db(
             for timestamp in range(start_timestamp, finish_timestamp, bucket_size):
                 table_name = "_".join([type_of_data, str(timestamp)])
 
+                query = form_query(table_name, timestamp1, timestamp2)
+                print("QUERY: ", query)
+
                 if is_table_exists(cursor, table_name):
-                    cursor.execute(
-                        "select * from "
-                        + table_name
-                        + " where timestamp >= "
-                        + str(timestamp1)
-                        + " and timestamp <= "
-                        + str(timestamp2)
-                        + ";"
-                    )
+                    cursor.execute(query)
                     result += cursor.fetchall()
         cursor.close()
         return result

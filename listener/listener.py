@@ -113,8 +113,8 @@ class SocketStorage:
                     print(err)
 
     def close_connection_to_db(self):
-        self.db_connection.commit()
         try:
+            self.db_connection.commit()
             self.cursor.execute("""SELECT count(*) from """ + self.table_name)
 
             print("count rows : ", self.cursor.fetchone())
