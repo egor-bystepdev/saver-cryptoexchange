@@ -2,9 +2,11 @@ import json
 import os
 import sys
 import time
+import dateutil.parser
 
 from binance import ThreadedWebsocketManager
 from mysql.connector import connect, Error, errorcode
+from websocketsftx.client import FtxWebsocketClient
 
 api_key = os.environ["binance_api_key"]
 api_secret = os.environ["binance_api_secret"]
@@ -19,6 +21,10 @@ def get_timestamp_ms_gtm0():
     return time.time_ns() // 1_000_000
 
 
+def isoformattotimestamp(server_time: str):
+    return int(dateutil.parser.isoparse(server_time).timestamp() * 1000)
+
+
 class SocketStorage:
     def __init__(self, twm, exchange, symbol):
         self.type_of_data = None
@@ -26,7 +32,8 @@ class SocketStorage:
         self.cursor = None
         self.db_connection = None
         self.db_name = None
-        self.symbol = symbol
+        self.symbol_original = symbol
+        self.symbol = symbol.replace("-", "_")
         self.cnt = 0
         self.twm = twm
         self.exchange = exchange
@@ -36,6 +43,7 @@ class SocketStorage:
         self.time_bucket_db = 3 * 60 * 60 * 1000  # -- как часто обновляем бд, всё в ms
         self.table_name = None
         self.current_time_for_table_name = None
+        self.sleep_time_for_ftx_websockets = 1500  # ms
 
     def upd_db_name(self):
         self.db_name = self.exchange + "_" + self.symbol
@@ -43,7 +51,7 @@ class SocketStorage:
     def upd_table_time(self, server_time):
         if self.table_name is None:
             self.current_time_for_table_name = (
-                    server_time - server_time % self.time_bucket_db
+                server_time - server_time % self.time_bucket_db
             )
             return True
         else:
@@ -54,7 +62,7 @@ class SocketStorage:
 
     def upd_table_name(self):
         self.table_name = (
-                self.type_of_data + "_" + str(self.current_time_for_table_name)
+            self.type_of_data + "_" + str(self.current_time_for_table_name)
         )
 
     def connect_to_db(self):
@@ -103,7 +111,6 @@ class SocketStorage:
                     print("Ошибка с базой данных: ", err)
                 else:
                     print(err)
-                
 
     def close_connection_to_db(self):
         try:
@@ -121,7 +128,35 @@ class SocketStorage:
             else:
                 print(err)
 
-    def handle_socket_message(self, msg):
+    def ftx_msg_handler(self, messages: list, type_of_data: str):
+        receive_time = get_timestamp_ms_gtm0()
+        for msg_list in messages:
+            msg = msg_list[0]
+            msg["e"] = type_of_data
+            msg["E"] = isoformattotimestamp(msg["time"])
+            result_msg = {"data": msg}
+            self.handle_socket_message(result_msg)
+
+    def ftx_listener_socket(self, types_of_data: list):
+        client = FtxWebsocketClient()
+        while 42 == 42:
+            curr_time = get_timestamp_ms_gtm0()
+            if "trade" in types_of_data:
+                res = client.get_trades(self.symbol_original)
+                self.ftx_msg_handler(res, "trade")
+            time.sleep(
+                max(
+                    0,
+                    (
+                        curr_time
+                        + self.sleep_time_for_ftx_websockets
+                        - get_timestamp_ms_gtm0()
+                    )
+                    / 1000,
+                )
+            )
+
+    def handle_socket_message(self, msg: dict):
         receive_time = get_timestamp_ms_gtm0()
         msg = msg["data"]
         server_time = msg["E"]
@@ -181,26 +216,33 @@ class SocketStorage:
 
 def main():
     symbol = "BNBBTC"
+    exchange = "binance"
     if len(sys.argv) > 1:
         symbol = sys.argv[1]
+    if len(sys.argv) > 2:
+        exchange = sys.argv[2]
     print("symbol : ", symbol)
+    print("exchange : ", exchange)
 
-    twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
-    twm.start()  # обязательно до старта потоков прослушивания
+    if exchange == "binance":
+        twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
+        twm.start()  # обязательно до старта потоков прослушивания
 
-    streams = [
-        symbol.lower() + "@trade",
-        symbol.lower() + "@depth",
-        symbol.lower() + "@kline_1m",
-    ]
-    twm.start_multiplex_socket(
-        callback=SocketStorage(twm, "binance", symbol).handle_socket_message,
-        streams=streams,
-    )
+        streams = [
+            symbol.lower() + "@trade",
+            symbol.lower() + "@depth",
+            symbol.lower() + "@kline_1m",
+        ]
+        twm.start_multiplex_socket(
+            callback=SocketStorage(twm, exchange, symbol).handle_socket_message,
+            streams=streams,
+        )
 
-    print(*streams)
-    twm.join()
-    print("End")
+        print(*streams)
+        twm.join()
+        print("End")
+    elif exchange == "ftx":
+        SocketStorage(None, exchange, symbol).ftx_listener_socket(["trade"])
 
 
 if __name__ == "__main__":
