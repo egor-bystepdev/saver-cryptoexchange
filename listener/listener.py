@@ -91,13 +91,13 @@ class SocketStorage:
         for type_of_data in ["trade", "kline", "depthUpdate"]:
             try:
                 self.cursor.execute(
-                    "CREATE TABLE IF NOT EXISTS "
+                    "CREAT TABLE IF NOT EXISTS "
                     + "_".join([type_of_data, str(self.current_time_for_table_name)])
                     + "(timestamp BIGINT, data TEXT);"
                 )
             except Error as err:
                 print("Ошибка в create_table:\n\t")
-                if err.errno == errorcode.ProgrammingError:
+                if err.errno == Error.ProgrammingError:
                     print("Синтаксическая ошибка в SQL запросе: ", err)
                 elif err.errno == errorcode.DatabaseError:
                     print("Ошибка с базой данных: ", err)

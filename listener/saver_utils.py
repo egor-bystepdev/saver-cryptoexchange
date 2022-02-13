@@ -14,12 +14,7 @@ def is_table_exists(cursor, name):
     return len(result_query) != 0
 
 def form_query(name, time1, time2):
-    query = "select * from " + name
-    query += " where timestamp >= " + str(time1)
-    query += " and timestamp <= " + str(time2)
-    query += ';'
-
-    return query
+    return f"select * from {name} where timestamp >= {time1} and timestamp <= {time2};"
 
 # возврат всех ответов по типу данных для биржи по интрументы с timestamp1 до timestamp2, возвращемое значение лист
 # картежей, возможно надо будет ещё и чекать если ошибка в получении произошла
