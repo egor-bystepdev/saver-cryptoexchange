@@ -19,6 +19,7 @@ class FtxWebsocketClient(WebsocketManager):
     def __init__(self) -> None:
         super().__init__()
         self._trades: DefaultDict[str, Deque] = defaultdict(lambda: deque([], maxlen=10000))
+        self._candles: DefaultDict[str, Deque] = defaultdict(lambda: deque([], maxlen=10000))
         self._fills: Deque = deque([], maxlen=10000)
         self._api_key = os.environ["ftx_api_key"]
         self._api_secret = os.environ["ftx_api_secret"]
@@ -83,6 +84,12 @@ class FtxWebsocketClient(WebsocketManager):
         if subscription not in self._subscriptions:
             self._subscribe(subscription)
         return dict(self._orders.copy())
+    
+    def get_candles(self, market: str) -> List[Dict]:
+        subscription = {'channel': 'candles', 'market': market, 'resolution': 30}
+        if subscription not in self._subscriptions:
+            self._subscribe(subscription)
+        return list(self._candles[market].copy())
 
     def get_trades(self, market: str) -> List[Dict]:
         subscription = {'channel': 'trades', 'market': market}
@@ -155,6 +162,9 @@ class FtxWebsocketClient(WebsocketManager):
 
     def _handle_trades_message(self, message: Dict) -> None:
         self._trades[message['market']].append(message['data'])
+    
+    def _handle_candles_message(self, message: Dict) -> None:
+        self._candles[message['market']].append(message['data'])
 
     def _handle_ticker_message(self, message: Dict) -> None:
         self._tickers[message['market']] = message['data']
@@ -188,3 +198,5 @@ class FtxWebsocketClient(WebsocketManager):
             self._handle_fills_message(message)
         elif channel == 'orders':
             self._handle_orders_message(message)
+        elif channel == 'candles':
+            self._handle_candles_message(message)
