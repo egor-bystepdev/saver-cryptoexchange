@@ -24,6 +24,7 @@ def get_all_msg_in_db(
         timestamp1: int,
         timestamp2: int,
         timestamp_in_ms: bool = False,
+		data_types: list = [],
 ):
     if timestamp1 > timestamp2:
         return []
@@ -39,7 +40,7 @@ def get_all_msg_in_db(
         cursor = db_connection.cursor()
         cursor.execute("use " + "_".join([exchange, symbol]) + ";")
         result = []
-        for type_of_data in ["trade", "kline", "depthUpdate"]:
+        for type_of_data in data_types:
             for timestamp in range(start_timestamp, finish_timestamp, bucket_size):
                 table_name = "_".join([type_of_data, str(timestamp)])
 

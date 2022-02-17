@@ -2,15 +2,19 @@ import listener
 import json
 import uvicorn
 
+exchange_data_types = {
+	"binance": ["trade", "kline", "depthUpdate"],
+	"ftx": ["trades", "orderbook"]
+}
+
 from fastapi import FastAPI
 
 CRYPTO_API = FastAPI()
 
-
 @CRYPTO_API.get("/")
 def get_events(exchange: str, instrument: str, start_timestamp: int, finish_timestamp: int):
     events = listener.get_all_msg_in_db(exchange, instrument, start_timestamp,
-                                     finish_timestamp, True)
+                                     finish_timestamp, True, exchange_data_types[exchange])
     res = []
     for event in events:
         tmp = '[' + event[1] + ']'
