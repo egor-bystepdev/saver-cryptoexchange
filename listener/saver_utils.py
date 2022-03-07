@@ -14,12 +14,7 @@ def is_table_exists(cursor, name):
     return len(result_query) != 0
 
 def form_query(name, time1, time2):
-    query = "select * from " + name
-    query += " where timestamp >= " + str(time1)
-    query += " and timestamp <= " + str(time2)
-    query += ';'
-
-    return query
+    return f"select * from {name} where timestamp >= {time1} and timestamp <= {time2};"
 
 # возврат всех ответов по типу данных для биржи по интрументы с timestamp1 до timestamp2, возвращемое значение лист
 # картежей, возможно надо будет ещё и чекать если ошибка в получении произошла
@@ -29,6 +24,7 @@ def get_all_msg_in_db(
         timestamp1: int,
         timestamp2: int,
         timestamp_in_ms: bool = False,
+		data_types: list = [],
 ):
     if timestamp1 > timestamp2:
         return []
@@ -44,7 +40,7 @@ def get_all_msg_in_db(
         cursor = db_connection.cursor()
         cursor.execute("use " + "_".join([exchange, symbol]) + ";")
         result = []
-        for type_of_data in ["trade", "kline", "depthUpdate"]:
+        for type_of_data in data_types:
             for timestamp in range(start_timestamp, finish_timestamp, bucket_size):
                 table_name = "_".join([type_of_data, str(timestamp)])
 

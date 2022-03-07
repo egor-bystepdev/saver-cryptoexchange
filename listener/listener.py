@@ -7,6 +7,7 @@ import dateutil.parser
 from binance import ThreadedWebsocketManager
 from mysql.connector import connect, Error, errorcode
 from websocketsftx.client import FtxWebsocketClient
+from websocketsftx.threaded_websocket_manager import ThreadedWebsocketManagerFTX
 
 api_key = os.environ["binance_api_key"]
 api_secret = os.environ["binance_api_secret"]
@@ -26,7 +27,7 @@ def isoformattotimestamp(server_time: str):
 
 
 class SocketStorage:
-    def __init__(self, twm, exchange, symbol):
+    def __init__(self, twm, exchange, symbol, data_types):
         self.type_of_data = None
         self.sqlite_select_query = None
         self.cursor = None
@@ -37,6 +38,7 @@ class SocketStorage:
         self.cnt = 0
         self.twm = twm
         self.exchange = exchange
+        self.data_types = data_types
         self.capacity_for_db = 1  # после скольких инсертов делаем коммит, видимо всегда будет 1 и этот функционал
         # надо будет выпилить
         self.count_of_insert = 0
@@ -96,7 +98,7 @@ class SocketStorage:
             exit(1)
 
     def create_table(self):
-        for type_of_data in ["trade", "kline", "depthUpdate"]:
+        for type_of_data in self.data_types:
             try:
                 self.cursor.execute(
                     "CREATE TABLE IF NOT EXISTS "
@@ -105,7 +107,7 @@ class SocketStorage:
                 )
             except Error as err:
                 print("Ошибка в create_table:\n\t")
-                if err.errno == errorcode.ProgrammingError:
+                if err.errno == Error.ProgrammingError:
                     print("Синтаксическая ошибка в SQL запросе: ", err)
                 elif err.errno == errorcode.DatabaseError:
                     print("Ошибка с базой данных: ", err)
@@ -130,31 +132,18 @@ class SocketStorage:
 
     def ftx_msg_handler(self, messages: list, type_of_data: str):
         receive_time = get_timestamp_ms_gtm0()
-        for msg_list in messages:
-            msg = msg_list[0]
-            msg["e"] = type_of_data
-            msg["E"] = isoformattotimestamp(msg["time"])
-            result_msg = {"data": msg}
+        if type_of_data == "trades":
+            for msg_list in messages:
+                msg = msg_list[0]
+                msg["e"] = type_of_data
+                msg["E"] = isoformattotimestamp(msg["time"])
+                result_msg = {"data": msg}
+                self.handle_socket_message(result_msg)
+        elif type_of_data == "orderbook":
+            messages["e"] = type_of_data
+            messages["E"] = receive_time
+            result_msg = {"data": messages}
             self.handle_socket_message(result_msg)
-
-    def ftx_listener_socket(self, types_of_data: list):
-        client = FtxWebsocketClient()
-        while 42 == 42:
-            curr_time = get_timestamp_ms_gtm0()
-            if "trade" in types_of_data:
-                res = client.get_trades(self.symbol_original)
-                self.ftx_msg_handler(res, "trade")
-            time.sleep(
-                max(
-                    0,
-                    (
-                        curr_time
-                        + self.sleep_time_for_ftx_websockets
-                        - get_timestamp_ms_gtm0()
-                    )
-                    / 1000,
-                )
-            )
 
     def handle_socket_message(self, msg: dict):
         receive_time = get_timestamp_ms_gtm0()
@@ -228,13 +217,14 @@ def main():
         twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
         twm.start()  # обязательно до старта потоков прослушивания
 
-        streams = [
-            symbol.lower() + "@trade",
-            symbol.lower() + "@depth",
-            symbol.lower() + "@kline_1m",
+        data_types = [
+            "trade",
+            "kline",
+            "depthUpdate",
         ]
+        streams = [symbol.lower() + data_type for data_type in ["@trade", "@kline_1m", "@depth"]]
         twm.start_multiplex_socket(
-            callback=SocketStorage(twm, exchange, symbol).handle_socket_message,
+            callback=SocketStorage(twm, exchange, symbol, data_types).handle_socket_message,
             streams=streams,
         )
 
@@ -242,7 +232,19 @@ def main():
         twm.join()
         print("End")
     elif exchange == "ftx":
-        SocketStorage(None, exchange, symbol).ftx_listener_socket(["trade"])
+        data_types = [
+            "trades",
+            "orderbook",
+        ]
+
+        twm = ThreadedWebsocketManagerFTX(data_types, 2, symbol)
+
+        twm.start(SocketStorage(None, exchange, symbol, data_types).ftx_msg_handler)
+
+        print(*data_types)
+
+        twm.join()
+        print("End")
 
 
 if __name__ == "__main__":
