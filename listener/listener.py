@@ -1,6 +1,8 @@
+from concurrent.futures import thread
 import json
 import os
 import sys
+import threading
 import time
 import dateutil.parser
 
@@ -46,6 +48,7 @@ class SocketStorage:
         self.table_name = None
         self.current_time_for_table_name = None
         self.sleep_time_for_ftx_websockets = 1500  # ms
+        self.mutex = threading.Lock()
 
     def upd_db_name(self):
         self.db_name = self.exchange + "_" + self.symbol
@@ -131,19 +134,23 @@ class SocketStorage:
                 print(err)
 
     def ftx_msg_handler(self, messages: list, type_of_data: str):
-        receive_time = get_timestamp_ms_gtm0()
-        if type_of_data == "trades":
-            for msg_list in messages:
-                msg = msg_list[0]
-                msg["e"] = type_of_data
-                msg["E"] = isoformattotimestamp(msg["time"])
-                result_msg = {"data": msg}
+        self.mutex.acquire()
+        try:
+            receive_time = get_timestamp_ms_gtm0()
+            if type_of_data == "trades":
+                for msg_list in messages:
+                    msg = msg_list[0]
+                    msg["e"] = type_of_data
+                    msg["E"] = isoformattotimestamp(msg["time"])
+                    result_msg = {"data": msg}
+                    self.handle_socket_message(result_msg)
+            elif type_of_data == "orderbook":
+                messages["e"] = type_of_data
+                messages["E"] = receive_time
+                result_msg = {"data": messages}
                 self.handle_socket_message(result_msg)
-        elif type_of_data == "orderbook":
-            messages["e"] = type_of_data
-            messages["E"] = receive_time
-            result_msg = {"data": messages}
-            self.handle_socket_message(result_msg)
+        finally:
+            self.mutex.release()
 
     def handle_socket_message(self, msg: dict):
         receive_time = get_timestamp_ms_gtm0()
