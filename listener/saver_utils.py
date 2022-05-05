@@ -9,12 +9,12 @@ sql_password = os.environ["sql_password"]
 
 
 def is_table_exists(cursor, name):
-    cursor.execute("show tables like '" + name + "';")
+    cursor.execute("SHOW TABLES LIKE '" + name + "';")
     result_query = cursor.fetchall()
     return len(result_query) != 0
 
 def form_query(name, time1, time2):
-    return f"select * from {name} where timestamp >= {time1} and timestamp <= {time2};"
+    return f"SELECT * FROM {name} WHERE timestamp >= {time1} AND timestamp <= {time2};"
 
 # возврат всех ответов по типу данных для биржи по интрументы с timestamp1 до timestamp2, возвращемое значение лист
 # картежей, возможно надо будет ещё и чекать если ошибка в получении произошла
@@ -33,12 +33,12 @@ def get_all_msg_in_db(
         if not timestamp_in_ms:
             timestamp1 *= 1000
             timestamp2 *= 1000
-        bucket_size = 3 * 60 * 60 * 1000  # мб потом прокинется в переменные окружения
+        bucket_size = 3 * 60 * 60 * 1000
         start_timestamp = timestamp1 - timestamp1 % bucket_size
         finish_timestamp = timestamp2 + bucket_size - timestamp2 % bucket_size
         db_connection = connect(user="root", password=sql_password, host="127.0.0.1")
         cursor = db_connection.cursor()
-        cursor.execute("use " + "_".join([exchange, symbol]) + ";")
+        cursor.execute("USE " + "_".join([exchange, symbol]) + ";")
         result = []
         for type_of_data in data_types:
             for timestamp in range(start_timestamp, finish_timestamp, bucket_size):
