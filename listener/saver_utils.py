@@ -53,20 +53,7 @@ def get_all_msg_in_db(
         cursor.close()
         return result
     except Error as err:
-        print("Ошибка в get_all_msg_in_db:\n\t")
-        if err.errno == errorcode.ProgrammingError:
-            print("Синтаксическая ошибка в SQL запросе: ", err)
-        elif err.errno == errorcode.IntegrityError:
-            print("Проблема с записью ключей: ", err)
-        elif err.errno == errorcode.DatabaseError:
-            print("Ошибка с базой данных: ", err)
-        elif err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-            print("Неправильный пароль или пользователь: ", err)
-        elif err.errno == errorcode.ER_BAD_DB_ERROR:
-            print("Базы данных не существует: ", err)
-        else:
-            print(err)
-
+        print("Error in get_all_msg_in_db:\n\t")
         logging.error(traceback.format_exc())
 
         return []
