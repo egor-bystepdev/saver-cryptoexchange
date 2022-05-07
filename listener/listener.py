@@ -8,11 +8,9 @@ import logging as log
 
 from binance import ThreadedWebsocketManager
 from mysql.connector import connect, Error, errorcode
-from listener.utils.atomic_int import AtomicInt
+from utils.atomic_int import AtomicInt
 from websocketsftx.client import FtxWebsocketClient
 from websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
-
-import utils.atomic_int
 
 sql_password = os.environ["sql_password"]
 
@@ -152,45 +150,73 @@ class SocketStorage:
                 self.handle_socket_message(result_msg)
 
     def handle_socket_message(self, msg: dict):
-        with self.handler_lock:
-            receive_time = get_timestamp_ms_gtm0()
+        receive_time = get_timestamp_ms_gtm0()
 
-            if self.cnt == 0:
-                self.connect_to_db()
+        if self.cnt == 0:
+            self.connect_to_db()
 
-            msg = msg["data"]
-            server_time = msg["E"]
-            self.type_of_data = msg["e"]
-            msg["receive_time"] = receive_time
+        msg = msg["data"]
+        server_time = msg["E"]
+        self.type_of_data = msg["e"]
+        msg["receive_time"] = receive_time
 
-            log.info(f"{self.type_of_data} -- receive time : {receive_time}, server time : {server_time}, current delta time : {receive_time - server_time}")
+        log.info(f"{self.type_of_data} -- receive time : {receive_time}, server time : {server_time}, current delta time : {receive_time - server_time}")
 
-            if self.upd_table_time(server_time):
-                self.upd_table_name()
-                self.create_table()
-            else:
-                self.upd_table_name()
+        if self.upd_table_time(server_time):
+            self.upd_table_name()
+            self.create_table()
+        else:
+            self.upd_table_name()
 
-            self.cnt += 1
-            message = json.dumps(msg)
-            message = message.replace('"', '\\"')
+        self.cnt += 1
+        message = json.dumps(msg)
+        message = message.replace('"', '\\"')
 
-            try:
-                self.cursor.execute(
-                    "INSERT INTO "
-                    + self.table_name
-                    + " (timestamp, data) VALUES ("
-                    + str(server_time)
-                    + ', "'
-                    + message
-                    + '");'
-                )
-            except Error as err:
-                handle_error("handle_socket_message", err, log)
+        try:
+            self.cursor.execute(
+                "INSERT INTO "
+                + self.table_name
+                + " (timestamp, data) VALUES ("
+                + str(server_time)
+                + ', "'
+                + message
+                + '");'
+            )
+        except Error as err:
+            handle_error("handle_socket_message", err, log)
 
-            self.db_connection.commit()
-            log.info(f"{self.cnt} COMMIT\n")
-            self.last_update.set_value(receive_time)
+        self.db_connection.commit()
+        log.info(f"{self.cnt} COMMIT\n")
+        self.last_update.set_value(receive_time)
+        
+    def get_all_messages(self, timestamp1: int, timestamp2: int, timestamp_in_ms: bool = False, data_type: list = []):
+        if timestamp1 > timestamp2:
+            return []
+
+        try:
+            if not timestamp_in_ms:
+                timestamp1 *= 1000
+                timestamp2 *= 1000
+            start_timestamp = timestamp1 - timestamp1 % self.time_bucket_db
+            finish_timestamp = timestamp2 + (self.time_bucket_db - timestamp2 % self.time_bucket_db)
+
+            result = []
+            for type_of_data in data_types:
+                for timestamp in range(start_timestamp, finish_timestamp, self.time_bucket_db):
+                    table_name = "_".join([type_of_data, str(timestamp)])
+
+                    query = f"SELECT * FROM {table_name} WHERE timestamp >= {timestamp1} AND timestamp <= {timestamp2};"
+                    log.info(f"QUERY: {query}")
+
+                    self.cursor.execute(query)
+                    result += self.cursor.fetchall()
+
+            return result
+        except Error as err:
+            log.error("Error in get_all_messages")
+            log.error(err)
+
+            return []
 
 def main_log(info):
     print(f"[Listener INFO]: {info}")
@@ -224,14 +250,14 @@ def main():
         main_log(f"listening {', '.join(streams)} from {exchange} exchange\n")
         twm.join()
     elif exchange == "ftx":
-        twm = FTXThreadedWebsocketManager(data_types[exchange], 2, symbol, api_key, api_secret)
+        twm = FTXThreadedWebsocketManager(data_types[exchange], 1, symbol, api_key, api_secret)
 
         twm.start(storage.ftx_msg_handler)
 
         main_log(f"listening {', '.join(data_types[exchange])} from {exchange} exchange\n")
         twm.join()
     else:
-        print(f"[LISTENER ERROR]: No such exchange {exchange}")
+        print(f"[Listener ERROR]: No such exchange {exchange}")
         os._exit(1)
 
 
