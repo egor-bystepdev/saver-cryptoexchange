@@ -8,8 +8,11 @@ import logging as log
 
 from binance import ThreadedWebsocketManager
 from mysql.connector import connect, Error, errorcode
+from listener.utils.atomic_int import AtomicInt
 from websocketsftx.client import FtxWebsocketClient
 from websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
+
+import utils.atomic_int
 
 sql_password = os.environ["sql_password"]
 
@@ -49,16 +52,23 @@ class SocketStorage:
         self.cursor = None
         self.db_connection = None
         self.db_name = None
+        self.table_name = None
+        self.current_time_for_table_name = None
+
         self.symbol = symbol.replace("-", "_")
         self.cnt = 0
         self.exchange = exchange
         self.data_types = data_types
-        self.time_bucket_db = 3 * 60 * 60 * 1000  # -- как часто обновляем бд, всё в ms
-        self.table_name = None
-        self.current_time_for_table_name = None
-        self.mutex = threading.Lock()
+        self.time_bucket_db = 3 * 60 * 60 * 1000  #database update frequency
+        self.last_update = AtomicInt()
+
+        self.ftx_handler_lock = threading.Lock()
+        self.handler_lock = threading.Lock()
         
         log.basicConfig(format="[SocketStorage %(levelname)s]: %(message)s", level=log.INFO)
+    
+    def get_last_update_time(self):
+        return self.last_update.get_value()
 
     def upd_db_name(self):
         self.db_name = f"{self.exchange}_{self.symbol}"
@@ -69,10 +79,10 @@ class SocketStorage:
                 server_time - server_time % self.time_bucket_db
             )
             return True
-        else:
-            if server_time >= self.current_time_for_table_name + self.time_bucket_db:
-                self.current_time_for_table_name += self.time_bucket_db
-                return True
+        elif server_time >= self.current_time_for_table_name + self.time_bucket_db:
+            self.current_time_for_table_name += self.time_bucket_db
+            return True
+
         return False
 
     def upd_table_name(self):
@@ -126,8 +136,7 @@ class SocketStorage:
             handle_error("close_connection_to_db", err, log)
 
     def ftx_msg_handler(self, messages: list, type_of_data: str):
-        self.mutex.acquire()
-        try:
+        with self.ftx_handler_lock:
             receive_time = get_timestamp_ms_gtm0()
             if type_of_data == "trades":
                 for msg_list in messages:
@@ -141,47 +150,47 @@ class SocketStorage:
                 messages["E"] = receive_time
                 result_msg = {"data": messages}
                 self.handle_socket_message(result_msg)
-        finally:
-            self.mutex.release()
 
     def handle_socket_message(self, msg: dict):
-        receive_time = get_timestamp_ms_gtm0()
+        with self.handler_lock:
+            receive_time = get_timestamp_ms_gtm0()
 
-        if self.cnt == 0:
-            self.connect_to_db()
+            if self.cnt == 0:
+                self.connect_to_db()
 
-        msg = msg["data"]
-        server_time = msg["E"]
-        self.type_of_data = msg["e"]
-        msg["receive_time"] = receive_time
+            msg = msg["data"]
+            server_time = msg["E"]
+            self.type_of_data = msg["e"]
+            msg["receive_time"] = receive_time
 
-        log.info(f"{self.type_of_data} -- receive time : {receive_time}, server time : {server_time}, current delta time : {receive_time - server_time}")
+            log.info(f"{self.type_of_data} -- receive time : {receive_time}, server time : {server_time}, current delta time : {receive_time - server_time}")
 
-        if self.upd_table_time(server_time):
-            self.upd_table_name()
-            self.create_table()
-        else:
-            self.upd_table_name()
+            if self.upd_table_time(server_time):
+                self.upd_table_name()
+                self.create_table()
+            else:
+                self.upd_table_name()
 
-        self.cnt += 1
-        message = json.dumps(msg)
-        message = message.replace('"', '\\"')
+            self.cnt += 1
+            message = json.dumps(msg)
+            message = message.replace('"', '\\"')
 
-        try:
-            self.cursor.execute(
-                "INSERT INTO "
-                + self.table_name
-                + " (timestamp, data) VALUES ("
-                + str(server_time)
-                + ', "'
-                + message
-                + '");'
-            )
-        except Error as err:
-            handle_error("handle_socket_message", err, log)
+            try:
+                self.cursor.execute(
+                    "INSERT INTO "
+                    + self.table_name
+                    + " (timestamp, data) VALUES ("
+                    + str(server_time)
+                    + ', "'
+                    + message
+                    + '");'
+                )
+            except Error as err:
+                handle_error("handle_socket_message", err, log)
 
-        self.db_connection.commit()
-        log.info(f"{self.cnt} COMMIT\n")
+            self.db_connection.commit()
+            log.info(f"{self.cnt} COMMIT\n")
+            self.last_update.set_value(receive_time)
 
 def main_log(info):
     print(f"[Listener INFO]: {info}")
