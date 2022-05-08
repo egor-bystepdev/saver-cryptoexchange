@@ -38,7 +38,7 @@ class SocketStorage:
         self.time_bucket_db = 3 * 60 * 60 * 1000  # database update frequency
         self.last_update = AtomicInt()
 
-        self.database = DBManager(exchange, symbol.replace("-", "_"), data_types, number)
+        self.database = DBManager(exchange, symbol.replace("-", "_").replace("/", "_"), data_types, number)
 
         self.ftx_handler_lock = threading.Lock()
         self.handler_lock = threading.Lock()
@@ -130,27 +130,32 @@ def main():
 
     storage = SocketStorage(exchange, symbol, data_types[exchange])
 
-    if exchange == "binance":
-        twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
-        twm.start()
+    try:
+        if exchange == "binance":
+            twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
+            twm.start()
 
-        streams = [symbol.lower() + data_type for data_type in ["@trade", "@kline_1m", "@depth"]]
-        twm.start_multiplex_socket(
-            callback=storage.handle_socket_message,
-            streams=streams,
-        )
+            streams = [symbol.lower() + data_type for data_type in ["@trade", "@kline_1m", "@depth"]]
+            twm.start_multiplex_socket(
+                callback=storage.handle_socket_message,
+                streams=streams,
+            )
 
-        logger.info(f"listening {', '.join(streams)} from {exchange} exchange\n")
-        twm.join()
-    elif exchange == "ftx":
-        twm = FTXThreadedWebsocketManager(data_types[exchange], 1, symbol, api_key, api_secret)
+            logger.info(f"listening {', '.join(streams)} from {exchange} exchange\n")
+            twm.join()
+        elif exchange == "ftx":
+            twm = FTXThreadedWebsocketManager(data_types[exchange], 1, symbol, api_key, api_secret)
 
-        twm.start(storage.ftx_msg_handler)
+            twm.start(storage.ftx_msg_handler)
 
-        logger.info(f"listening {', '.join(data_types[exchange])} from {exchange} exchange\n")
-        twm.join()
-    else:
-        logger.error(f"No such exchange {exchange}")
+            logger.info(f"listening {', '.join(data_types[exchange])} from {exchange} exchange\n")
+            twm.join()
+        else:
+            logger.error(f"No such exchange {exchange}")
+            sys.exit(1)
+    except Exception as err:
+        logger.error("TWM creation error")
+        logger.error(err)
         sys.exit(1)
 
 if __name__ == "__main__":
