@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import threading
 import logging as log
 from mysql.connector import connect, Error
@@ -19,6 +20,16 @@ class DBManager:
         self.password = os.environ["sql_password"]
         
         self.logger = create_logger(f"DBManager ({number})")
+
+        self.repeats = 100
+        try:
+            with open("listener/utils/config.json", "r") as f:
+                self.repeats = json.load(f)["repeats"]
+        except Exception as err:
+            self.logger.error(err)
+            self.logger.info("repeats set by default to 100")
+        
+        self.uncommited_data = []
     
     def update_name(self):
         self.name = f"{self.exchange}_{self.symbol}"
@@ -70,21 +81,22 @@ class DBManager:
     
     def insert(self, table_name, server_time, message, cnt):
         with self.lock:
+            if len(self.uncommited_data) == self.repeats:
+                self.logger.error("too many errors in insert")
+                sys.exit(1)
+
+            self.uncommited_data.append((server_time, message))
             try:
-                self.cursor.execute(
-                    "INSERT INTO "
-                    + table_name
-                    + " (timestamp, data) VALUES ("
-                    + str(server_time)
-                    + ', "'
-                    + message
-                    + '");'
-                )
-            except Error as err:
-                handle_error("insert", err, log)
+                self.cursor.executemany(f'INSERT INTO {table_name} (timestamp, data) VALUES (%s, %s);', self.uncommited_data)
             
-            self.connection.commit()
-            self.logger.info(f"{cnt} COMMIT\n")
+                self.connection.commit()
+
+                commit_numbers = [str(x) for x in range(cnt - len(self.uncommited_data) + 1, cnt + 1)]
+                self.logger.info(f"{', '.join(commit_numbers)} COMMIT\n")
+
+                self.uncommited_data.clear()
+            except Error as err:
+                handle_error("insert", err, self.logger)
 
     def get_all_messages(self, time_bucket_db, timestamp1, timestamp2, timestamp_in_ms=False, data_types = []):
         if timestamp1 > timestamp2:
