@@ -7,7 +7,7 @@ from mysql.connector import connect, Error
 from utils.helpers import handle_error, create_logger
 
 class DBManager:
-    def __init__(self, exchange, symbol, data_types, number=1):
+    def __init__(self, exchange, symbol, data_types, number):
         self.name= None
         self.cursor = None
         self.connection = None

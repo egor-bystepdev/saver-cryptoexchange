@@ -38,7 +38,7 @@ class SocketStorage:
         self.time_bucket_db = 3 * 60 * 60 * 1000  # database update frequency
         self.last_update = AtomicInt()
 
-        self.database = DBManager(exchange, symbol.replace("-", "_"), data_types)
+        self.database = DBManager(exchange, symbol.replace("-", "_"), data_types, number)
 
         self.ftx_handler_lock = threading.Lock()
         self.handler_lock = threading.Lock()
