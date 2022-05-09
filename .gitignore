@@ -1,2 +1,4 @@
 # python cache files
 *pycache*
+
+.DS_Store

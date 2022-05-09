@@ -10,19 +10,16 @@ from typing import DefaultDict, Deque, List, Dict, Tuple, Optional
 from fastapi import websockets
 from gevent.event import Event
 
-from websocketsftx.websocket_manager  import WebsocketManager
-
+from websocketsftx.websocket_manager import WebsocketManager
 
 class FtxWebsocketClient(WebsocketManager):
     _ENDPOINT = 'wss://ftx.com/ws/'
 
-    def __init__(self) -> None:
+    def __init__(self, api_key, api_secret) -> None:
         super().__init__()
         self._trades: DefaultDict[str, Deque] = defaultdict(lambda: deque([], maxlen=10000))
-        self._candles: DefaultDict[str, Deque] = defaultdict(lambda: deque([], maxlen=10000))
-        self._fills: Deque = deque([], maxlen=10000)
-        self._api_key = os.environ["ftx_api_key"]
-        self._api_secret = os.environ["ftx_api_secret"]
+        self._api_key = api_key
+        self._api_secret = api_secret
         self._orderbook_update_events: DefaultDict[str, Event] = defaultdict(Event)
         self._reset_data()
 
@@ -31,8 +28,6 @@ class FtxWebsocketClient(WebsocketManager):
 
     def _reset_data(self) -> None:
         self._subscriptions: List[Dict] = []
-        self._orders: DefaultDict[int, Dict] = defaultdict(dict)
-        self._tickers: DefaultDict[str, Dict] = defaultdict(dict)
         self._orderbook_timestamps: DefaultDict[str, float] = defaultdict(float)
         self._orderbook_update_events.clear()
         self._orderbooks: DefaultDict[str, Dict[str, DefaultDict[float, float]]] = defaultdict(
@@ -69,28 +64,6 @@ class FtxWebsocketClient(WebsocketManager):
         while subscription in self._subscriptions:
             self._subscriptions.remove(subscription)
 
-    def get_fills(self) -> List[Dict]:
-        if not self._logged_in:
-            self._login()
-        subscription = {'channel': 'fills'}
-        if subscription not in self._subscriptions:
-            self._subscribe(subscription)
-        return list(self._fills.copy())
-
-    def get_orders(self) -> Dict[int, Dict]:
-        if not self._logged_in:
-            self._login()
-        subscription = {'channel': 'orders'}
-        if subscription not in self._subscriptions:
-            self._subscribe(subscription)
-        return dict(self._orders.copy())
-    
-    def get_candles(self, market: str) -> List[Dict]:
-        subscription = {'channel': 'candles', 'market': market, 'resolution': 30}
-        if subscription not in self._subscriptions:
-            self._subscribe(subscription)
-        return list(self._candles[market].copy())
-
     def get_trades(self, market: str) -> List[Dict]:
         subscription = {'channel': 'trades', 'market': market}
         if subscription not in self._subscriptions:
@@ -120,12 +93,6 @@ class FtxWebsocketClient(WebsocketManager):
         if subscription not in self._subscriptions:
             self._subscribe(subscription)
         self._orderbook_update_events[market].wait(timeout)
-
-    def get_ticker(self, market: str) -> Dict:
-        subscription = {'channel': 'ticker', 'market': market}
-        if subscription not in self._subscriptions:
-            self._subscribe(subscription)
-        return self._tickers[market]
 
     def _handle_orderbook_message(self, message: Dict) -> None:
         market = message['market']
@@ -162,19 +129,6 @@ class FtxWebsocketClient(WebsocketManager):
 
     def _handle_trades_message(self, message: Dict) -> None:
         self._trades[message['market']].append(message['data'])
-    
-    def _handle_candles_message(self, message: Dict) -> None:
-        self._candles[message['market']].append(message['data'])
-
-    def _handle_ticker_message(self, message: Dict) -> None:
-        self._tickers[message['market']] = message['data']
-
-    def _handle_fills_message(self, message: Dict) -> None:
-        self._fills.append(message['data'])
-
-    def _handle_orders_message(self, message: Dict) -> None:
-        data = message['data']
-        self._orders.update({data['id']: data})
 
     def _on_message(self, ws, raw_message: str) -> None:
         message = json.loads(raw_message)
@@ -192,11 +146,3 @@ class FtxWebsocketClient(WebsocketManager):
             self._handle_orderbook_message(message)
         elif channel == 'trades':
             self._handle_trades_message(message)
-        elif channel == 'ticker':
-            self._handle_ticker_message(message)
-        elif channel == 'fills':
-            self._handle_fills_message(message)
-        elif channel == 'orders':
-            self._handle_orders_message(message)
-        elif channel == 'candles':
-            self._handle_candles_message(message)
