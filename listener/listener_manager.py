@@ -44,7 +44,6 @@ class ListenerManager:
                         callback=storage.handle_socket_message,
                         streams=streams,
                     )  # check try except
-                    print(socket_name)
                     self.binance_symbol_info[symbol] = (storage, socket_name)
                     self.logger.info(
                         f"Start listening {symbol} from {exchange} exchange\n"
@@ -68,7 +67,6 @@ class ListenerManager:
                     self.socket_counter += 1
                     twm.start(storage.ftx_msg_handler)
                     self.ftx_symbol_info[symbol] = (storage, twm)
-                    pass
                 else:
                     return (False, "Unknown exchange")
         except Exception as err:
@@ -89,7 +87,6 @@ class ListenerManager:
                 if exchange == "binance":
                     if not symbol in self.binance_symbol_info:
                         return ("symbol not in listening", [])
-                    pass
                     storage = self.binance_symbol_info[symbol][0]
                     return (
                         "",
@@ -104,7 +101,6 @@ class ListenerManager:
                 elif exchange == "ftx":
                     if not symbol in self.binance_symbol_info:
                         return ("symbol not in listening", [])
-                    pass
                     storage = self.ftx_symbol_info[symbol][0]
                     return (
                         "",
