@@ -2,15 +2,13 @@ import hmac
 import json
 import time
 import zlib
-import os
 from collections import defaultdict, deque
 from itertools import zip_longest
 from typing import DefaultDict, Deque, List, Dict, Tuple, Optional
 
-from fastapi import websockets
 from gevent.event import Event
-
 from websocketsftx.websocket_manager import WebsocketManager
+
 
 class FtxWebsocketClient(WebsocketManager):
     _ENDPOINT = 'wss://ftx.com/ws/'
@@ -26,7 +24,7 @@ class FtxWebsocketClient(WebsocketManager):
 
     def _on_open(self, ws):
         self._reset_data()
-    
+
     def stopped(self):
         return self._stop
 
@@ -67,7 +65,7 @@ class FtxWebsocketClient(WebsocketManager):
         self.send_json({'op': 'unsubscribe', **subscription})
         while subscription in self._subscriptions:
             self._subscriptions.remove(subscription)
-    
+
     def unsubscribe(self, market: str, channel: str) -> None:
         self._stop = True
 

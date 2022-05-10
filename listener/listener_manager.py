@@ -1,12 +1,12 @@
-from binance import ThreadedWebsocketManager
-from websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
 import os
-import logging as log
-import time
-from utils.helpers import *
+import threading
+
+from binance import ThreadedWebsocketManager
+
 from listener import SocketStorage
 from listener import data_types
-import threading
+from utils.helpers import *
+from websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
 
 
 class ListenerManager:
@@ -74,18 +74,18 @@ class ListenerManager:
             return (False, str(err))
 
     def get_all_messages(
-        self,
-        exchange,
-        symbol,
-        timestamp1,
-        timestamp2,
-        timestamp_in_ms=False,
-        data_types=[],
+            self,
+            exchange,
+            symbol,
+            timestamp1,
+            timestamp2,
+            timestamp_in_ms=False,
+            data_types=[],
     ):
         try:
             with self.lock:
                 if exchange == "binance":
-                    if not symbol in self.binance_symbol_info:
+                    if symbol not in self.binance_symbol_info:
                         return ("symbol not in listening", [])
                     storage = self.binance_symbol_info[symbol][0]
                     return (
@@ -99,7 +99,7 @@ class ListenerManager:
                         ),
                     )
                 elif exchange == "ftx":
-                    if not symbol in self.binance_symbol_info:
+                    if symbol not in self.binance_symbol_info:
                         return ("symbol not in listening", [])
                     storage = self.ftx_symbol_info[symbol][0]
                     return (

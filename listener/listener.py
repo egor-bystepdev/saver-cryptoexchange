@@ -2,29 +2,27 @@ import json
 import os
 import sys
 import threading
-import logging as log
 
 from binance import ThreadedWebsocketManager
-from mysql.connector import connect, Error
 from utils.atomic_int import AtomicInt
 from utils.helpers import *
 from utils.db_manager import DBManager
-from websocketsftx.client import FtxWebsocketClient
 from websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
 
 data_types = {
     "binance":
-    [
-        "trade",
-        "kline",
-        "depthUpdate",
-    ],
+        [
+            "trade",
+            "kline",
+            "depthUpdate",
+        ],
     "ftx":
-    [
-        "trades",
-        "orderbook",
-    ]
+        [
+            "trades",
+            "orderbook",
+        ]
 }
+
 
 # source: https://python-binance.readthedocs.io/en/latest/websockets.html
 
@@ -45,14 +43,14 @@ class SocketStorage:
 
         log.basicConfig(level=log.INFO)
         self.logger = create_logger(f"SocketStorage ({number})")
-    
+
     def get_last_update_time(self):
         return self.last_update.get_value()
 
     def upd_table_time(self, server_time):
         if self.table_name is None:
             self.current_time_for_table_name = (
-                server_time - server_time % self.time_bucket_db
+                    server_time - server_time % self.time_bucket_db
             )
             return True
         elif server_time >= self.current_time_for_table_name + self.time_bucket_db:
@@ -93,7 +91,8 @@ class SocketStorage:
         self.type_of_data = msg["e"]
         msg["receive_time"] = receive_time
 
-        self.logger.info(f"{self.type_of_data} -- receive time : {receive_time}, server time : {server_time}, current delta time : {receive_time - server_time}")
+        self.logger.info(
+            f"{self.type_of_data} -- receive time : {receive_time}, server time : {server_time}, current delta time : {receive_time - server_time}")
 
         if self.upd_table_time(server_time):
             self.upd_table_name()
@@ -108,9 +107,10 @@ class SocketStorage:
         self.database.insert(self.table_name, server_time, message, self.cnt)
 
         self.last_update.set_value(receive_time)
-        
+
     def get_all_messages(self, timestamp1: int, timestamp2: int, timestamp_in_ms: bool = False, data_types: list = []):
         return self.database.get_all_messages(self.time_bucket_db, timestamp1, timestamp2, timestamp_in_ms, data_types)
+
 
 def main():
     logger = create_logger("Listener")
@@ -165,12 +165,14 @@ def main():
             time.sleep(7)
 
             twm.stop("BTC-PERP")
-            logger.info(f"stop listening {', '.join(data_types[exchange])} from {exchange} exchange for symbol (BTC-PERP)\n")
+            logger.info(
+                f"stop listening {', '.join(data_types[exchange])} from {exchange} exchange for symbol (BTC-PERP)\n")
 
             time.sleep(7)
 
             twm.stop(symbol)
-            logger.info(f"stop listening {', '.join(data_types[exchange])} from {exchange} exchange for symbol ({symbol})\n")
+            logger.info(
+                f"stop listening {', '.join(data_types[exchange])} from {exchange} exchange for symbol ({symbol})\n")
 
             # after that moment process should terminate
 
@@ -182,6 +184,7 @@ def main():
         logger.error("TWM creation error")
         logger.error(err)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
