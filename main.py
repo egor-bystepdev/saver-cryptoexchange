@@ -7,6 +7,8 @@ exchange_data_types = {
 	"ftx": ["trades", "orderbook"]
 }
 
+exchanges = {"binance", "ftx"}
+
 from fastapi import FastAPI
 from fastapi import HTTPException
 
@@ -14,6 +16,10 @@ CRYPTO_API = FastAPI()
 
 @CRYPTO_API.get("/")
 def get_events(exchange: str, instrument: str, start_timestamp: int, finish_timestamp: int):
+    if exchange not in exchanges:
+        log_text = f"not available exchange {exchange}"
+        listener.handle_error("get_events api method", log_text, listener_db.logger)
+        raise HTTPException(status_code=404, detail=log_text)
     events = listener.get_all_msg_in_db(exchange, instrument, start_timestamp,
                                      finish_timestamp, True, exchange_data_types[exchange])
     res = []
@@ -29,11 +35,14 @@ def stop(exchange: str, instrument: str):
 
 @CRYPTO_API.get("/start")
 def start(exchange: str, instrument: str):
+    if exchange not in exchanges:
+        log_text = f"not available exchange {exchange}"
+        listener.handle_error("get_events api method", log_text, listener_db.logger)
+        raise HTTPException(status_code=404, detail=log_text)
     started, log_text = listener_db.start_listing(exchange=exchange, symbol=instrument)
     if not started:
         listener.handle_error("start api method", log_text, listener_db.logger)
         raise HTTPException(status_code=404, detail=log_text)
-
 
 
 if __name__ == "__main__":
