@@ -1,4 +1,3 @@
-import os
 import time
 import dateutil.parser
 import logging as log

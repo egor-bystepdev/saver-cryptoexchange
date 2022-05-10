@@ -8,6 +8,7 @@ exchange_data_types = {
 }
 
 from fastapi import FastAPI
+from fastapi import HTTPException
 
 CRYPTO_API = FastAPI()
 
@@ -22,6 +23,19 @@ def get_events(exchange: str, instrument: str, start_timestamp: int, finish_time
 
     return json.dumps(res)
 
+@CRYPTO_API.get("/stop")
+def stop(exchange: str, instrument: str):
+    pass
+
+@CRYPTO_API.get("/start")
+def start(exchange: str, instrument: str):
+    started, log_text = listener_db.start_listing(exchange=exchange, symbol=instrument)
+    if not started:
+        listener.handle_error("start api method", log_text, listener_db.logger)
+        raise HTTPException(status_code=404, detail=log_text)
+
+
 
 if __name__ == "__main__":
+    listener_db = listener.ListenerManager()
     uvicorn.run(CRYPTO_API, host="0.0.0.0", port=8000)
