@@ -22,9 +22,13 @@ class FtxWebsocketClient(WebsocketManager):
         self._api_secret = api_secret
         self._orderbook_update_events: DefaultDict[str, Event] = defaultdict(Event)
         self._reset_data()
+        self._stop = False
 
     def _on_open(self, ws):
         self._reset_data()
+    
+    def stopped(self):
+        return self._stop
 
     def _reset_data(self) -> None:
         self._subscriptions: List[Dict] = []
@@ -63,6 +67,9 @@ class FtxWebsocketClient(WebsocketManager):
         self.send_json({'op': 'unsubscribe', **subscription})
         while subscription in self._subscriptions:
             self._subscriptions.remove(subscription)
+    
+    def unsubscribe(self, market: str, channel: str) -> None:
+        self._stop = True
 
     def get_trades(self, market: str) -> List[Dict]:
         subscription = {'channel': 'trades', 'market': market}

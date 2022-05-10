@@ -144,11 +144,36 @@ def main():
             logger.info(f"listening {', '.join(streams)} from {exchange} exchange\n")
             twm.join()
         elif exchange == "ftx":
-            twm = FTXThreadedWebsocketManager(data_types[exchange], 1, symbol, api_key, api_secret)
+            twm = FTXThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
 
-            twm.start(storage.ftx_msg_handler)
+            # example code
 
-            logger.info(f"listening {', '.join(data_types[exchange])} from {exchange} exchange\n")
+            twm.start(
+                callback=storage.ftx_msg_handler,
+                symbol=symbol,
+            )
+            logger.info(f"listening {', '.join(data_types[exchange])} from {exchange} exchange for symbol ({symbol})\n")
+
+            time.sleep(10)
+
+            twm.start(
+                callback=storage.ftx_msg_handler,
+                symbol="BTC-PERP"
+            )
+            logger.info(f"listening {', '.join(data_types[exchange])} from {exchange} exchange for symbol (BTC-PERP)\n")
+
+            time.sleep(7)
+
+            twm.stop("BTC-PERP")
+            logger.info(f"stop listening {', '.join(data_types[exchange])} from {exchange} exchange for symbol (BTC-PERP)\n")
+
+            time.sleep(7)
+
+            twm.stop(symbol)
+            logger.info(f"stop listening {', '.join(data_types[exchange])} from {exchange} exchange for symbol ({symbol})\n")
+
+            # after that moment process should terminate
+
             twm.join()
         else:
             logger.error(f"No such exchange {exchange}")
