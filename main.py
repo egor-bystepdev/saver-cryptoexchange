@@ -20,8 +20,11 @@ def get_events(exchange: str, instrument: str, start_timestamp: int, finish_time
         log_text = f"not available exchange {exchange}"
         listener.handle_error("get_events api method", log_text, listener_db.logger)
         raise HTTPException(status_code=404, detail=log_text)
-    events = listener.get_all_msg_in_db(exchange, instrument, start_timestamp,
+    log_text, events = listener_db.get_all_messages(exchange, instrument, start_timestamp,
                                      finish_timestamp, True, exchange_data_types[exchange])
+    if log_text != "":
+        listener.handle_error("get_events api method", log_text, listener_db.logger)
+        raise HTTPException(status_code=404, detail=log_text)
     res = []
     for event in events:
         tmp = '[' + event[1] + ']'
