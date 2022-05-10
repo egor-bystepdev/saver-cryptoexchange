@@ -34,12 +34,17 @@ class FTXThreadedWebsocketManager:
     
     def join(self):
         for symbol in self.threads:
+            for thread in self.threads[symbol]:
+                thread.join()
+    
+    def stop_all(self):
+        for symbol in self.threads:
             for data_type in self.data_types:
                 self.clients[symbol][data_type].unsubscribe(symbol, data_type)
 
             for thread in self.threads[symbol]:
                 thread.join()
-
+ 
     def stop(self, symbol):
         if symbol not in self.threads:
             self.log.info(f"symbol ({symbol}) is not listened at this moment")
