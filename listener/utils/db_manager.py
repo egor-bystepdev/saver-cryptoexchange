@@ -1,14 +1,15 @@
+import json
 import os
 import sys
-import json
 import threading
-import logging as log
+
 from mysql.connector import connect, Error
 from utils.helpers import handle_error, create_logger
 
+
 class DBManager:
     def __init__(self, exchange, symbol, data_types, number):
-        self.name= None
+        self.name = None
         self.cursor = None
         self.connection = None
 
@@ -18,7 +19,7 @@ class DBManager:
 
         self.lock = threading.Lock()
         self.password = os.environ["sql_password"]
-        
+
         self.logger = create_logger(f"DBManager ({number})")
 
         self.repeats = 100
@@ -28,9 +29,9 @@ class DBManager:
         except Exception as err:
             self.logger.error(err)
             self.logger.info("repeats set by default to 100")
-        
+
         self.uncommited_data = []
-    
+
     def update_name(self):
         self.name = f"{self.exchange}_{self.symbol}"
 
@@ -55,8 +56,8 @@ class DBManager:
             self.logger.info(f"Database version: {record[0][0]}\n")
         except Error as err:
             handle_error("connect_to_db", err, self.logger)
-            sys.exit(1) # if connection is not successfull, thread should be relaunched
-    
+            sys.exit(1)  # if connection is not successfull, thread should be relaunched
+
     def disconnect(self):
         try:
             self.connection.commit()
@@ -66,7 +67,7 @@ class DBManager:
             self.cursor.close()
         except Error as err:
             handle_error("close_connection_to_db", err, self.logger)
-    
+
     def create_tables(self, current_time_for_table_name):
         for data_type in self.data_types:
             try:
@@ -77,8 +78,8 @@ class DBManager:
                 )
             except Error as err:
                 handle_error("create_table", err, self.logger)
-                sys.exit(1) # if any table could not be created, thread should be relaunched
-    
+                sys.exit(1)  # if any table could not be created, thread should be relaunched
+
     def insert(self, table_name, server_time, message, cnt):
         with self.lock:
             if len(self.uncommited_data) == self.repeats:
@@ -87,8 +88,9 @@ class DBManager:
 
             self.uncommited_data.append((server_time, message))
             try:
-                self.cursor.executemany(f'INSERT INTO {table_name} (timestamp, data) VALUES (%s, %s);', self.uncommited_data)
-            
+                self.cursor.executemany(f'INSERT INTO {table_name} (timestamp, data) VALUES (%s, %s);',
+                                        self.uncommited_data)
+
                 self.connection.commit()
 
                 commit_numbers = [str(x) for x in range(cnt - len(self.uncommited_data) + 1, cnt + 1)]
@@ -98,7 +100,7 @@ class DBManager:
             except Error as err:
                 handle_error("insert", err, self.logger)
 
-    def get_all_messages(self, time_bucket_db, timestamp1, timestamp2, timestamp_in_ms=False, data_types = []):
+    def get_all_messages(self, time_bucket_db, timestamp1, timestamp2, timestamp_in_ms=False, data_types=[]):
         if timestamp1 > timestamp2:
             return []
 
@@ -126,5 +128,3 @@ class DBManager:
             handle_error("get_all_messages", err, self.logger)
 
             return []
-
-
