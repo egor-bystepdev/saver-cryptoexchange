@@ -1,4 +1,9 @@
 # python cache files
 *pycache*
+.pytest_cache
 
 .DS_Store
+
+# IDE files
+.idea/
+.vscode/
