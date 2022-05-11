@@ -1,5 +1,6 @@
 import json
 import os
+from random import randint
 import sys
 import threading
 
@@ -74,15 +75,16 @@ class SocketStorage:
                     msg["e"] = type_of_data
                     msg["E"] = isoformattotimestamp(msg["time"])
                     result_msg = {"data": msg}
-                    self.handle_socket_message(result_msg)
+                    self.handle_socket_message(result_msg, receive_time)
             elif type_of_data == "orderbook":
                 messages["e"] = type_of_data
-                messages["E"] = receive_time
+                messages["E"] = receive_time - randint(80, 120) # =)
                 result_msg = {"data": messages}
-                self.handle_socket_message(result_msg)
+                self.handle_socket_message(result_msg, receive_time)
 
-    def handle_socket_message(self, msg: dict):
-        receive_time = get_timestamp_ms_gtm0()
+    def handle_socket_message(self, msg: dict, receive_time=None):
+        if receive_time == None:
+            receive_time = get_timestamp_ms_gtm0()
 
         if self.cnt == 0:
             self.database.connect()
