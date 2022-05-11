@@ -40,6 +40,7 @@ class SocketStorage:
 
         self.ftx_handler_lock = threading.Lock()
         self.handler_lock = threading.Lock()
+        self.stoped = False
 
         log.basicConfig(level=log.INFO)
         self.logger = create_logger(f"SocketStorage ({number})")

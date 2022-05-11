@@ -1,3 +1,6 @@
+from tabnanny import check
+from binance import ThreadedWebsocketManager
+from websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
 import os
 import threading
 
@@ -24,6 +27,7 @@ class ListenerManager:
         self.binance_symbol_info = {}
         self.ftx_symbol_info = {}
         self.lock = threading.Lock()
+        SocketChecker(self).start()
 
     def start_listing(self, exchange: str, symbol: str):
         try:
@@ -54,23 +58,58 @@ class ListenerManager:
                         f"Start listening {symbol} from {exchange} exchange\n",
                     )
                 elif exchange == "ftx":
+                    if symbol in self.ftx_symbol_info:
+                        return (False, "Symbol already in listening")
+                    
                     twm = FTXThreadedWebsocketManager(
-                        data_types[exchange],
-                        1,
-                        symbol,
-                        self.api_key_ftx,
-                        self.api_secret_ftx,
+                        api_key=self.api_key_ftx,
+                        api_secret=self.api_secret_ftx,
                     )
                     storage = SocketStorage(
                         exchange, symbol, data_types[exchange], self.socket_counter
                     )
                     self.socket_counter += 1
-                    twm.start(storage.ftx_msg_handler)
+                    twm.start(storage.ftx_msg_handler, symbol=symbol)
                     self.ftx_symbol_info[symbol] = (storage, twm)
+                    print(len(self.ftx_symbol_info))
+                    return (
+                        True,
+                        f"Start listening {symbol} from {exchange} exchange\n",
+                    )
                 else:
                     return (False, "Unknown exchange")
         except Exception as err:
             handle_error("start listening", err, self.logger)
+            return (False, str(err))
+
+    def stop_listening(self, exchange: str, symbol: str): # удалить их из списка
+        try:
+            with self.lock:
+                if exchange == "binance":
+                    if symbol not in self.binance_symbol_info:
+                        return (False, "No symbol in listening")
+                    self.binance_symbol_info[symbol][0].stoped = True
+                    self.twm_binance.stop_socket(self.binance_symbol_info[symbol][1])
+                    self.binance_symbol_info.pop(symbol)
+                    return (
+                        True,
+                        f"Stop listening {symbol} from {exchange} exchange\n",
+                    )
+
+                elif exchange == "ftx":
+                    if symbol not in self.ftx_symbol_info:
+                        return (False, "Non symbol in listening")
+                    self.ftx_symbol_info[symbol][0].stoped = True
+                    self.ftx_symbol_info[symbol][1].stop(symbol)
+                    self.ftx_symbol_info.pop(symbol)
+                    return (
+                        True,
+                        f"Stop listening {symbol} from {exchange} exchange\n",
+                    )
+                else:
+                    return (False, "Unknown exchange")
+        except Exception as err:
+            handle_error("stop listening", err, self.logger)
             return (False, str(err))
 
     def get_all_messages(
@@ -119,7 +158,58 @@ class ListenerManager:
             return (False, str(err))
 
 
-"""
+class SocketChecker(threading.Thread):
+    def __init__(self, manager : ListenerManager):
+        threading.Thread.__init__(self)
+        self.manager = manager
+        self.timer = 1000 * 60 * 5
+        self.check_timer = 1000 * 60 * 10
+
+    def run(self):
+       while (True):
+           time.sleep(self.check_timer)
+           self.checker()
+        
+    def checker(self):
+        for socket_info in self.GetBinanceSockets():
+            socket = socket_info[1][0]
+            symbol = socket_info[0]
+            if (socket.last_update.get_value() + self.timer < get_timestamp_ms_gtm0() and not socket.stoped):
+                self.manager.start_listing("binance", symbol)
+                self.manager.start_listing("binance", symbol)
+                handle_error("socket checker", "socket " + symbol + " binance was failed, restart", self.manager.logger)
+            else:
+                self.manager.logger.info("socket " + symbol + " binance is OK")
+        
+        for socket_info in self.GetFtxSockets():
+            socket = socket_info[1][0]
+            symbol = socket_info[0]
+            if (socket.last_update.get_value() + self.timer < get_timestamp_ms_gtm0() and not socket.stoped):
+                self.manager.start_listing("ftx", symbol)
+                self.manager.start_listing("ftx", symbol) 
+                handle_error("socket checker", "socket " + symbol + " ftx was failed, restart", self.manager.logger)
+            else:
+                self.manager.logger.info("socket " + symbol + " ftx is OK")
+    
+    def GetBinanceSockets(self):
+        list_of_sockets = []
+        with self.manager.lock:
+            for key, value in self.manager.binance_symbol_info.items():
+                list_of_sockets.append((key, value))
+        
+        return list_of_sockets
+    
+    def GetFtxSockets(self):
+        list_of_sockets = []
+        with self.manager.lock:
+            for key, value in self.manager.ftx_symbol_info.items():
+                list_of_sockets.append((key, value))
+        
+        return list_of_sockets
+
+
+'''
+
 exchange_data_types = {
 	"binance": ["trade", "kline", "depthUpdate"],
 	"ftx": ["trades", "orderbook"]
@@ -127,11 +217,16 @@ exchange_data_types = {
 
 ls = ListenerManager()
 
-ls.start_listing("binance", "BNBBTC")
+ls.start_listing("ftx", "NEAR_USDT")
+
+time.sleep(20)
+
+ls.stop_listening("ftx", "NEAR_USDT")
 
 while (True):
+    print("STOP")
     time.sleep(5)
-    print(ls.get_all_messages("binance", "BNBBTC", get_timestamp_ms_gtm0() - 100000, get_timestamp_ms_gtm0(), True, exchange_data_types["binance"]))
-    print
+    # print(ls.get_all_messages("binance", "BNBBTC", get_timestamp_ms_gtm0() - 100000, get_timestamp_ms_gtm0(), True, exchange_data_types["binance"]))
+    
+'''
 
-"""
