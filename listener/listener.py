@@ -29,13 +29,13 @@ data_types = {
 # source: https://python-binance.readthedocs.io/en/latest/websockets.html
 
 class SocketStorage:
-    def __init__(self, exchange, symbol, data_types, number=1):
+    def __init__(self, exchange, symbol, data_types, number=1, time_bucket_db=3 * 60 * 60 * 1000):
         self.table_name = None
         self.type_of_data = None
         self.current_time_for_table_name = None
 
         self.cnt = 0
-        self.time_bucket_db = 3 * 60 * 60 * 1000  # database update frequency
+        self.time_bucket_db = time_bucket_db  # database update frequency
         self.last_update = AtomicInt()
 
         self.error = StorageException()

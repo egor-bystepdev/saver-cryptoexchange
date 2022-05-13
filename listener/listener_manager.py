@@ -3,17 +3,22 @@ from binance import ThreadedWebsocketManager
 from websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
 import os
 import threading
+import json
 
 from binance import ThreadedWebsocketManager
 
 from listener import SocketStorage
 from listener import data_types
 from utils.helpers import *
+from utils.db_manager import *
+from utils.storage_exception import *
 from websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
 
 
 class ListenerManager:
     def __init__(self) -> None:
+        with open("config.json", "r") as fd:
+            self.config = json.load(fd)
         self.api_key_binance = os.environ["binance_api_key"]
         self.api_secret_binance = os.environ["binance_api_secret"]
         self.api_key_ftx = os.environ["ftx_api_key"]
@@ -21,13 +26,19 @@ class ListenerManager:
         self.twm_binance = ThreadedWebsocketManager(
             api_key=self.api_key_binance, api_secret=self.api_secret_ftx
         )
+        self.twm_ftx = FTXThreadedWebsocketManager(
+                    api_key=self.api_key_ftx,
+                    api_secret=self.api_secret_ftx,
+                )
         self.twm_binance.start()
         self.logger = create_logger("ListenerManager")
         self.socket_counter = 1
         self.binance_symbol_info = {}
         self.ftx_symbol_info = {}
         self.lock = threading.Lock()
-        SocketChecker(self).start()
+        SocketChecker(self, self.config["checker_cooldown_s"], self.config["fatal_time_for_socket_s"]).start()
+        for listening_pair in self.config["symbols_in_start"]:
+            self.start_listing(listening_pair["exchange"], listening_pair["symbol"])
 
     def start_listing(self, exchange: str, symbol: str):
         try:
@@ -46,7 +57,7 @@ class ListenerManager:
                     ]
                     socket_name = self.twm_binance.start_multiplex_socket(
                         callback=storage.handle_socket_message,
-                        streams=streams,
+                        streams=streams
                     )  # check try except
                     self.binance_symbol_info[symbol] = (storage, socket_name)
                     self.logger.info(
@@ -60,21 +71,16 @@ class ListenerManager:
                 elif exchange == "ftx":
                     if symbol in self.ftx_symbol_info:
                         return (False, "Symbol already in listening")
-                    
-                    twm = FTXThreadedWebsocketManager(
-                        api_key=self.api_key_ftx,
-                        api_secret=self.api_secret_ftx,
-                    )
 
                     storage = SocketStorage(
                         exchange, symbol, data_types[exchange], self.socket_counter
                     )
                     self.socket_counter += 1
-                    twm.start(
+                    self.twm_ftx.start(
                         callback=storage.ftx_msg_handler,
                         symbol=symbol
                     )
-                    self.ftx_symbol_info[symbol] = (storage, twm)
+                    self.ftx_symbol_info[symbol] = (storage, symbol)
                     self.logger.info(
                         f"Start listening {symbol} from {exchange} exchange\n"
                     )
@@ -107,7 +113,7 @@ class ListenerManager:
                     if symbol not in self.ftx_symbol_info:
                         return (False, "Non symbol in listening")
                     self.ftx_symbol_info[symbol][0].stoped = True
-                    self.ftx_symbol_info[symbol][1].stop(symbol)
+                    self.twm_ftx.stop(self.ftx_symbol_info[symbol][1])
                     self.ftx_symbol_info.pop(symbol)
                     return (
                         True,
@@ -126,43 +132,54 @@ class ListenerManager:
             timestamp1,
             timestamp2,
             timestamp_in_ms=False,
-            data_types=[],
+            data_types_=[],
     ):
         try:
             with self.lock:
                 storage = None
+                time_bucket_db = 0
                 if exchange == "binance":
-                    if symbol not in self.binance_symbol_info:
-                        return ("symbol not in listening", [])
-                    storage = self.binance_symbol_info[symbol][0]
+                    if symbol in self.binance_symbol_info:
+                        storage = self.binance_symbol_info[symbol][0]
                 elif exchange == "ftx":
-                    if symbol not in self.ftx_symbol_info:
-                        return ("symbol not in listening", [])
-                    storage = self.ftx_symbol_info[symbol][0]
+                    if symbol in self.ftx_symbol_info:
+                        storage = self.ftx_symbol_info[symbol][0]
                 else:
                     return ("Unknown exchange", [])
+                db = None
 
+                err = StorageException()
+                print(data_types[exchange])
+
+                if (storage is None):
+                    db = DBManager(exchange, symbol, data_types[exchange], 1, err)
+                    db.connect()
+                    print("OK")
+                    time_bucket_db = 3 * 60 * 60 * 1000
+                else:
+                    db = storage.database
+                    time_bucket_db = storage.time_bucket_db
+                
                 return (
                     "",
-                    storage.database.get_all_messages(
-                        storage.time_bucket_db,
+                    db.get_all_messages(
+                        time_bucket_db,
                         timestamp1,
                         timestamp2,
                         timestamp_in_ms,
-                        data_types,
+                        data_types_,
                     ),
                 )
         except Exception as err:
             handle_error("get_all_messages", err, self.logger)
             return (False, str(err))
 
-
 class SocketChecker(threading.Thread):
-    def __init__(self, manager : ListenerManager):
+    def __init__(self, manager : ListenerManager, timer, check_timer):
         threading.Thread.__init__(self)
         self.manager = manager
-        self.timer = 1000 * 60 * 5
-        self.check_timer = 1000 * 60 * 10
+        self.timer = timer
+        self.check_timer = check_timer
 
     def run(self):
        while (True):
@@ -216,6 +233,10 @@ exchange_data_types = {
 }
 
 ls = ListenerManager()
+
+print(ls.get_all_messages("ftx", "NEAR/USDT", get_timestamp_ms_gtm0() - 10000, get_timestamp_ms_gtm0(), True, exchange_data_types["ftx"]))
+
+exit(0)
 
 ls.start_listing("ftx", "NEAR/USDT")
 
