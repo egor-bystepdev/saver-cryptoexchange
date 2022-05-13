@@ -8,7 +8,7 @@ from utils.helpers import handle_error, create_logger
 
 
 class DBManager:
-    def __init__(self, exchange, symbol, data_types, number):
+    def __init__(self, exchange, symbol, data_types, number, error):
         self.name = None
         self.cursor = None
         self.connection = None
@@ -16,6 +16,7 @@ class DBManager:
         self.symbol = symbol
         self.exchange = exchange
         self.data_types = data_types
+        self.error = error
 
         self.lock = threading.Lock()
         self.password = os.environ["sql_password"]
@@ -56,6 +57,7 @@ class DBManager:
             self.logger.info(f"Database version: {record[0][0]}\n")
         except Error as err:
             handle_error("connect_to_db", err, self.logger)
+            self.error.set_error(err)
             sys.exit(1)  # if connection is not successfull, thread should be relaunched
 
     def disconnect(self):
@@ -78,12 +80,14 @@ class DBManager:
                 )
             except Error as err:
                 handle_error("create_table", err, self.logger)
+                self.error.set_error(err)
                 sys.exit(1)  # if any table could not be created, thread should be relaunched
 
     def insert(self, table_name, server_time, message, cnt):
         with self.lock:
             if len(self.uncommited_data) == self.repeats:
                 self.logger.error("too many errors in insert")
+                self.error.set_error(Exception("too many errors in insert"))
                 sys.exit(1)
 
             self.uncommited_data.append((server_time, message))

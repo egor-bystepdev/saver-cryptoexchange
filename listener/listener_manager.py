@@ -174,6 +174,8 @@ class SocketChecker(threading.Thread):
             socket = socket_info[1][0]
             symbol = socket_info[0]
             if (socket.last_update.get_value() + self.timer < get_timestamp_ms_gtm0() and not socket.stoped):
+                self.manager.logger.info(socket.error.get_error())
+
                 self.manager.stop_listening("binance", symbol)
                 self.manager.start_listing("binance", symbol)
                 handle_error("socket checker", "socket " + symbol + " binance was failed, restart", self.manager.logger)
@@ -184,6 +186,8 @@ class SocketChecker(threading.Thread):
             socket = socket_info[1][0]
             symbol = socket_info[0]
             if (socket.last_update.get_value() + self.timer < get_timestamp_ms_gtm0() and not socket.stoped):
+                self.manager.logger.info(socket.error.get_error())
+
                 self.manager.stop_listening("ftx", symbol)
                 self.manager.start_listing("ftx", symbol) 
                 handle_error("socket checker", "socket " + symbol + " ftx was failed, restart", self.manager.logger)
@@ -206,9 +210,7 @@ class SocketChecker(threading.Thread):
         
         return list_of_sockets
 
-
 """
-
 exchange_data_types = {
 	"binance": ["trade", "kline", "depthUpdate"],
 	"ftx": ["trades", "orderbook"]
@@ -235,5 +237,4 @@ ls.stop_listening("ftx", "NEAR/USDT")
 time.sleep(10)
 
 ls.stop_listening("binance", "BNBBTC")
-
 """

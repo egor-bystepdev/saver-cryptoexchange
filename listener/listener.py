@@ -5,6 +5,7 @@ import sys
 import threading
 
 from binance import ThreadedWebsocketManager
+from utils.storage_exception import StorageException
 from utils.atomic_int import AtomicInt
 from utils.helpers import *
 from utils.db_manager import DBManager
@@ -37,7 +38,8 @@ class SocketStorage:
         self.time_bucket_db = 3 * 60 * 60 * 1000  # database update frequency
         self.last_update = AtomicInt()
 
-        self.database = DBManager(exchange, symbol.replace("-", "_").replace("/", "_"), data_types, number)
+        self.error = StorageException()
+        self.database = DBManager(exchange, symbol.replace("-", "_").replace("/", "_"), data_types, number, self.error)
 
         self.ftx_handler_lock = threading.Lock()
         self.handler_lock = threading.Lock()
