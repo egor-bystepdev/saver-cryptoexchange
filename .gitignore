@@ -4,6 +4,9 @@
 
 .DS_Store
 
+# logs
+logs/
+
 # IDE files
 .idea/
 .vscode/

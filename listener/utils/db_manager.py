@@ -21,7 +21,7 @@ class DBManager:
         self.lock = threading.Lock()
         self.password = os.environ["sql_password"]
 
-        self.logger = create_logger(f"DBManager ({number})")
+        self.logger = create_logger(f"DBManager ({number})", exchange, symbol)
 
         self.repeats = 100
         try:

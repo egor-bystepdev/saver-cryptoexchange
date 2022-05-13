@@ -17,12 +17,15 @@ def handle_error(function_name, err, logger):
     logger.error(err)
 
 
-def create_logger(name):
+def create_logger(name, exchange=None, symbol=None, folder="logs/"):
     logger = log.getLogger(name)
     logger.propagate = False
 
-    handler = log.StreamHandler()
-    handler.setFormatter(log.Formatter("[" + name + " %(levelname)s]: %(message)s"))
+    filename = "logs/ListenerManager.log"
+    if exchange != None:
+        filename = f"{folder}{exchange}_{symbol.replace('/', '-').replace('_', '-')}.log"
+    handler = log.FileHandler(filename)
+    handler.setFormatter(log.Formatter("[" + name + " %(levelname)s]: {%(asctime)s} %(message)s"))
 
     logger.addHandler(handler)
 

@@ -46,7 +46,7 @@ class SocketStorage:
         self.stoped = False
 
         log.basicConfig(level=log.INFO)
-        self.logger = create_logger(f"SocketStorage ({number})")
+        self.logger = create_logger(f"SocketStorage ({number})", exchange, symbol)
 
     def get_last_update_time(self):
         return self.last_update.get_value()

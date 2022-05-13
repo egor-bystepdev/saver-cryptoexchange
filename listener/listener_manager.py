@@ -210,7 +210,6 @@ class SocketChecker(threading.Thread):
         
         return list_of_sockets
 
-"""
 exchange_data_types = {
 	"binance": ["trade", "kline", "depthUpdate"],
 	"ftx": ["trades", "orderbook"]
@@ -237,4 +236,3 @@ ls.stop_listening("ftx", "NEAR/USDT")
 time.sleep(10)
 
 ls.stop_listening("binance", "BNBBTC")
-"""
