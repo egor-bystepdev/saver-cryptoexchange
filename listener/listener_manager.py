@@ -76,11 +76,11 @@ class ListenerManager:
                         exchange, symbol, data_types[exchange], self.socket_counter
                     )
                     self.socket_counter += 1
-                    self.twm_ftx.start(
+                    socket_name =  self.twm_ftx.start(
                         callback=storage.ftx_msg_handler,
                         symbol=symbol
                     )
-                    self.ftx_symbol_info[symbol] = (storage, symbol)
+                    self.ftx_symbol_info[symbol] = (storage, socket_name)
                     self.logger.info(
                         f"Start listening {symbol} from {exchange} exchange\n"
                     )
@@ -95,7 +95,7 @@ class ListenerManager:
             handle_error("start listening", err, self.logger)
             return (False, str(err))
 
-    def stop_listening(self, exchange: str, symbol: str): # удалить их из списка
+    def stop_listening(self, exchange: str, symbol: str):
         try:
             with self.lock:
                 if exchange == "binance":
@@ -104,6 +104,9 @@ class ListenerManager:
                     self.binance_symbol_info[symbol][0].stoped = True
                     self.twm_binance.stop_socket(self.binance_symbol_info[symbol][1])
                     self.binance_symbol_info.pop(symbol)
+                    self.logger.info(
+                        f"Stop listening {symbol} from {exchange} exchange\n"
+                    )
                     return (
                         True,
                         f"Stop listening {symbol} from {exchange} exchange\n",
@@ -115,6 +118,9 @@ class ListenerManager:
                     self.ftx_symbol_info[symbol][0].stoped = True
                     self.twm_ftx.stop(self.ftx_symbol_info[symbol][1])
                     self.ftx_symbol_info.pop(symbol)
+                    self.logger.info(
+                        f"Stop listening {symbol} from {exchange} exchange\n"
+                    )
                     return (
                         True,
                         f"Stop listening {symbol} from {exchange} exchange\n",
@@ -122,7 +128,7 @@ class ListenerManager:
                 else:
                     return (False, "Unknown exchange")
         except Exception as err:
-            handle_error("stop listening", err, self.logger)
+            handle_error("Stop listening", err, self.logger)
             return (False, str(err))
 
     def get_all_messages(
@@ -147,12 +153,13 @@ class ListenerManager:
                 else:
                     return ("Unknown exchange", [])
                 db = None
-
                 err = StorageException()
 
                 if (storage is None):
                     db = DBManager(exchange, symbol, data_types[exchange], 1, err)
-                    db.connect()
+                    if not db.connect():
+                        self.logger.info(err.error.get_error())
+                        return (False, "db_error")
                     time_bucket_db = 3 * 60 * 60 * 1000
                 else:
                     db = storage.database
@@ -225,21 +232,21 @@ class SocketChecker(threading.Thread):
         
         return list_of_sockets
 
-# exchange_data_types = {
+#exchange_data_types = {
 # 	"binance": ["trade", "kline", "depthUpdate"],
 # 	"ftx": ["trades", "orderbook"]
 # }
 
-# ls = ListenerManager()
+#ls = ListenerManager()
 
-# print(ls.get_all_messages("ftx", "BTC/USDT", get_timestamp_ms_gtm0() - 10000, get_timestamp_ms_gtm0(), True, exchange_data_types["ftx"]))
+#print(ls.get_all_messages("ftx", "BTC/USDT", get_timestamp_ms_gtm0() - 100000, get_timestamp_ms_gtm0(), True, exchange_data_types["ftx"]))
 
-# ls.start_listing("ftx", "BTC/USDT")
+#ls.start_listing("ftx", "BTC/USDT")
 
-# time.sleep(20)
+#time.sleep(20)
 
-# ls.stop_listening("ftx", "BTC/USDT")
-# print(ls.get_all_messages("ftx", "BTC/USDT", get_timestamp_ms_gtm0() - 10000, get_timestamp_ms_gtm0(), True, exchange_data_types["ftx"]))
+#ls.stop_listening("ftx", "BTC/USDT")
+#print(ls.get_all_messages("ftx", "BTC/USDT", get_timestamp_ms_gtm0() - 10000, get_timestamp_ms_gtm0(), True, exchange_data_types["ftx"]))
 
 # ls.start_listing("binance", "BNBBTC")
 

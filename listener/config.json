@@ -2,6 +2,13 @@
     "checker_cooldown_s" : 300,
     "fatal_time_for_socket_s" : 180,
     "symbols_in_start" : 
-    [   
+    [   {
+            "exchange" : "binance",
+            "symbol"   : "BTCUSDT"
+        },
+        {
+            "exchange" : "ftx",
+            "symbol"   : "BTC-PERP"
+        }
     ]
 }
