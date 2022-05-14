@@ -4,7 +4,7 @@ import sys
 import threading
 
 from mysql.connector import connect, Error
-from utils.helpers import handle_error, create_logger
+from utils.helpers import handle_error, create_logger, format_table_name
 
 
 class DBManager:
@@ -13,7 +13,7 @@ class DBManager:
         self.cursor = None
         self.connection = None
 
-        self.symbol = symbol
+        self.symbol = format_table_name(symbol)
         self.exchange = exchange
         self.data_types = data_types
         self.error = error
@@ -46,8 +46,8 @@ class DBManager:
             self.connection = connect(
                 user="root", password=self.password, host="127.0.0.1"
             )
-
             self.cursor = self.connection.cursor()
+
             self.cursor.execute("CREATE DATABASE IF NOT EXISTS " + self.name)
             self.cursor.execute("USE " + self.name)
             self.logger.info("Database created and succesfully connected to MySQL")
@@ -55,10 +55,11 @@ class DBManager:
             self.cursor.execute("SELECT VERSION()")
             record = self.cursor.fetchall()
             self.logger.info(f"Database version: {record[0][0]}\n")
+            return True
         except Error as err:
             handle_error("connect_to_db", err, self.logger)
             self.error.set_error(err)
-            sys.exit(1)  # if connection is not successfull, thread should be relaunched
+            return False
 
     def disconnect(self):
         try:
@@ -107,7 +108,6 @@ class DBManager:
     def get_all_messages(self, time_bucket_db, timestamp1, timestamp2, timestamp_in_ms=False, data_types=[]):
         if timestamp1 > timestamp2:
             return []
-
         try:
             if not timestamp_in_ms:
                 timestamp1 *= 1000
@@ -116,6 +116,7 @@ class DBManager:
             finish_timestamp = timestamp2 + (time_bucket_db - timestamp2 % time_bucket_db)
 
             result = []
+            
             for data_type in data_types:
                 for timestamp in range(start_timestamp, finish_timestamp, time_bucket_db):
                     table_name = "_".join([data_type, str(timestamp)])

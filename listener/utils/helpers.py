@@ -16,6 +16,8 @@ def handle_error(function_name, err, logger):
     logger.error(f"Error in {function_name}")
     logger.error(err)
 
+def format_table_name(name):
+    return name.replace('/', '_').replace('-', '_')
 
 def create_logger(name, exchange=None, symbol=None, folder="logs/"):
     logger = log.getLogger(name)
@@ -23,7 +25,7 @@ def create_logger(name, exchange=None, symbol=None, folder="logs/"):
 
     filename = "logs/ListenerManager.log"
     if exchange != None:
-        filename = f"{folder}{exchange}_{symbol.replace('/', '-').replace('_', '-')}.log"
+        filename = f"{folder}{exchange}_{format_table_name(symbol)}.log"
     handler = log.FileHandler(filename)
     handler.setFormatter(log.Formatter("[" + name + " %(levelname)s]: {%(asctime)s} %(message)s"))
 

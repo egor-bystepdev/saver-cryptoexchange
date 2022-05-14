@@ -34,6 +34,8 @@ class FTXThreadedWebsocketManager:
             self.log.info(f"start listening data type ({self.data_types[type]}) for symbol ({symbol})\n")
             thread.start()
             type += 1
+        
+        return symbol
 
     def join(self):
         for symbol in self.threads:
