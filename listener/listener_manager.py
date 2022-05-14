@@ -17,7 +17,7 @@ from websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
 
 class ListenerManager:
     def __init__(self) -> None:
-        with open("config.json", "r") as fd:
+        with open("listener/config.json", "r") as fd:
             self.config = json.load(fd)
         self.api_key_binance = os.environ["binance_api_key"]
         self.api_secret_binance = os.environ["binance_api_secret"]
@@ -149,12 +149,10 @@ class ListenerManager:
                 db = None
 
                 err = StorageException()
-                print(data_types[exchange])
 
                 if (storage is None):
                     db = DBManager(exchange, symbol, data_types[exchange], 1, err)
                     db.connect()
-                    print("OK")
                     time_bucket_db = 3 * 60 * 60 * 1000
                 else:
                     db = storage.database
@@ -227,33 +225,34 @@ class SocketChecker(threading.Thread):
         
         return list_of_sockets
 
-exchange_data_types = {
-	"binance": ["trade", "kline", "depthUpdate"],
-	"ftx": ["trades", "orderbook"]
-}
+# exchange_data_types = {
+# 	"binance": ["trade", "kline", "depthUpdate"],
+# 	"ftx": ["trades", "orderbook"]
+# }
 
-ls = ListenerManager()
+# ls = ListenerManager()
 
-print(ls.get_all_messages("ftx", "NEAR/USDT", get_timestamp_ms_gtm0() - 10000, get_timestamp_ms_gtm0(), True, exchange_data_types["ftx"]))
+# print(ls.get_all_messages("ftx", "BTC/USDT", get_timestamp_ms_gtm0() - 10000, get_timestamp_ms_gtm0(), True, exchange_data_types["ftx"]))
 
-exit(0)
+# ls.start_listing("ftx", "BTC/USDT")
 
-ls.start_listing("ftx", "NEAR/USDT")
+# time.sleep(20)
 
-time.sleep(20)
+# ls.stop_listening("ftx", "BTC/USDT")
+# print(ls.get_all_messages("ftx", "BTC/USDT", get_timestamp_ms_gtm0() - 10000, get_timestamp_ms_gtm0(), True, exchange_data_types["ftx"]))
 
-ls.start_listing("binance", "BNBBTC")
+# ls.start_listing("binance", "BNBBTC")
 
-time.sleep(10)
-ptr = 0
-while (ptr < 3):
-    print("STOP")
-    time.sleep(5)
-    print(ls.get_all_messages("ftx", "NEAR/USDT", get_timestamp_ms_gtm0() - 100000, get_timestamp_ms_gtm0(), True, exchange_data_types["ftx"]))
-    ptr += 1
+# time.sleep(10)
+# ptr = 0
+# while (ptr < 3):
+#     print("STOP")
+#     time.sleep(5)
+#     print(ls.get_all_messages("ftx", "BTC/USDT", get_timestamp_ms_gtm0() - 100000, get_timestamp_ms_gtm0(), True, exchange_data_types["ftx"]))
+#     ptr += 1
 
-ls.stop_listening("ftx", "NEAR/USDT")
+# ls.stop_listening("ftx", "BTC/USDT")
 
-time.sleep(10)
+# time.sleep(10)
 
-ls.stop_listening("binance", "BNBBTC")
+# ls.stop_listening("binance", "BNBBTC")

@@ -4,7 +4,7 @@ import sys
 import threading
 
 from mysql.connector import connect, Error
-from utils.helpers import handle_error, create_logger
+from utils.helpers import handle_error, create_logger, format_table_name
 
 
 class DBManager:
@@ -13,7 +13,7 @@ class DBManager:
         self.cursor = None
         self.connection = None
 
-        self.symbol = symbol
+        self.symbol = format_table_name(symbol)
         self.exchange = exchange
         self.data_types = data_types
         self.error = error
@@ -43,25 +43,18 @@ class DBManager:
             self.update_name()
 
             self.logger.info(f"{self.symbol} connecting to {self.name}...\n")
-            print("OK!")
             self.connection = connect(
                 user="root", password=self.password, host="127.0.0.1"
             )
-            print("OK!")
             self.cursor = self.connection.cursor()
-            print("OK!")
+
             self.cursor.execute("CREATE DATABASE IF NOT EXISTS " + self.name)
-            print("OK!")
             self.cursor.execute("USE " + self.name)
-            print("OK!")
             self.logger.info("Database created and succesfully connected to MySQL")
-            print("OK!")
+
             self.cursor.execute("SELECT VERSION()")
-            print("OK!")
             record = self.cursor.fetchall()
-            print("OK!")
             self.logger.info(f"Database version: {record[0][0]}\n")
-            print("OK!")
         except Error as err:
             handle_error("connect_to_db", err, self.logger)
             self.error.set_error(err)
@@ -114,7 +107,6 @@ class DBManager:
     def get_all_messages(self, time_bucket_db, timestamp1, timestamp2, timestamp_in_ms=False, data_types=[]):
         if timestamp1 > timestamp2:
             return []
-        print("IN")
         try:
             if not timestamp_in_ms:
                 timestamp1 *= 1000

@@ -39,7 +39,7 @@ class SocketStorage:
         self.last_update = AtomicInt()
 
         self.error = StorageException()
-        self.database = DBManager(exchange, symbol.replace("-", "_").replace("/", "_"), data_types, number, self.error)
+        self.database = DBManager(exchange, symbol, data_types, number, self.error)
 
         self.ftx_handler_lock = threading.Lock()
         self.handler_lock = threading.Lock()
