@@ -55,10 +55,11 @@ class DBManager:
             self.cursor.execute("SELECT VERSION()")
             record = self.cursor.fetchall()
             self.logger.info(f"Database version: {record[0][0]}\n")
+            return True
         except Error as err:
             handle_error("connect_to_db", err, self.logger)
             self.error.set_error(err)
-            sys.exit(1)  # if connection is not successfull, thread should be relaunched
+            return False
 
     def disconnect(self):
         try:

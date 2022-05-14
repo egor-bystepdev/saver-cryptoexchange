@@ -89,7 +89,9 @@ class SocketStorage:
             receive_time = get_timestamp_ms_gtm0()
 
         if self.cnt == 0:
-            self.database.connect()
+            if not self.database.connect():
+                self.logger.error("Failure when connecting to database")
+                sys.exit(1)
 
         msg = msg["data"]
         server_time = msg["E"]
