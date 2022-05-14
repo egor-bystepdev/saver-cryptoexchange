@@ -87,9 +87,8 @@ def start(exchange: str, instrument: str):
 @CRYPTO_API.on_event("startup")
 def startup_event():
     start_http_server(port=9090)
-    global listener_db
-    listener_db = listener.ListenerManager()
 
 
 if __name__ == "__main__":
     uvicorn.run(CRYPTO_API, host="0.0.0.0", port=8080)
+    listener_db = listener.ListenerManager()
