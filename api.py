@@ -87,6 +87,7 @@ def start(exchange: str, instrument: str):
 @CRYPTO_API.on_event("startup")
 def startup_event():
     start_http_server(port=9090)
+    global listener_db
     listener_db = listener.ListenerManager()
 
 
