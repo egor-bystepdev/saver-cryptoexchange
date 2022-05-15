@@ -8,7 +8,8 @@ from fastapi.responses import JSONResponse
 from prometheus_client import start_http_server, Counter, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 
-import listener
+from listener import listener_manager
+from listener.utils.helpers import handle_error
 
 graphs = {}
 graphs["counter"] = Counter(
@@ -44,12 +45,12 @@ def get_events(exchange: str, instrument: str, start_timestamp: int, finish_time
     start_time = time.time()
     if exchange not in exchanges:
         log_text = f"not available exchange {exchange}"
-        listener.handle_error("get_events api method", log_text, listener_db.logger)
+        handle_error("get_events api method", log_text, listener_db.logger)
         raise HTTPException(status_code=404, detail=log_text)
     log_text, events = listener_db.get_all_messages(exchange, instrument, start_timestamp,
                                                     finish_timestamp, True, exchange_data_types[exchange])
     if log_text != "":
-        listener.handle_error("get_events api method", log_text, listener_db.logger)
+        handle_error("get_events api method", log_text, listener_db.logger)
         raise HTTPException(status_code=404, detail=log_text)
     res = []
     for event in events:
@@ -72,11 +73,11 @@ def start(exchange: str, instrument: str):
     start_time = time.time()
     if exchange not in exchanges:
         log_text = f"not available exchange {exchange}"
-        listener.handle_error("get_events api method", log_text, listener_db.logger)
+        handle_error("get_events api method", log_text, listener_db.logger)
         raise HTTPException(status_code=404, detail=log_text)
     started, log_text = listener_db.start_listing(exchange=exchange, symbol=instrument)
     if not started:
-        listener.handle_error("start api method", log_text, listener_db.logger)
+        handle_error("start api method", log_text, listener_db.logger)
         raise HTTPException(status_code=404, detail=log_text)
     end_time = time.time()
     graphs["histogram"].observe(end_time - start_time)
@@ -91,4 +92,4 @@ def startup_event():
 
 if __name__ == "__main__":
     uvicorn.run(CRYPTO_API, host="0.0.0.0", port=8080)
-    listener_db = listener.ListenerManager()
+    listener_db = listener_manager.ListenerManager()
