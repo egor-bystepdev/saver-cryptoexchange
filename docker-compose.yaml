@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile:  Dockerfile
+    restart: unless-stopped
+    container_name: oh_no
+    ports:
+      - 8080:8080
+    environment:
+      sql_password: "${sql_password}"
+      binance_api_key: "${binance_api_key}"
+      binance_api_secret: "${binance_api_secret}"
+      ftx_api_key: "${ftx_api_key}"
+      ftx_api_secret: "${ftx_api_secret}"
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yaml"
