@@ -184,11 +184,11 @@ class ListenerManager:
 
 
 class SocketChecker(threading.Thread):
-    def __init__(self, manager: ListenerManager, timer, check_timer):
+    def __init__(self, manager: ListenerManager, check_timer, timer):
         threading.Thread.__init__(self)
         self.manager = manager
-        self.timer = timer
         self.check_timer = check_timer
+        self.timer = timer
 
     def run(self):
         while True:
@@ -222,7 +222,6 @@ class SocketChecker(threading.Thread):
                 socket.last_update.get_value() + self.timer < get_timestamp_ms_gtm0()
                 and not socket.stoped
             ):
-                print(socket.last_update.get_value())
                 self.manager.logger.info(socket.error.get_error())
 
                 self.manager.stop_listening("ftx", symbol)

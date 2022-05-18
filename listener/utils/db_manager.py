@@ -19,7 +19,9 @@ class DBManager:
         self.error = error
 
         self.lock = threading.Lock()
-        # self.password = os.environ["sql_password"]
+        self.password = None
+        if "sql_password" in os.environ:
+            self.password = os.environ["sql_password"]
 
         self.logger = create_logger(f"DBManager ({number})", exchange, symbol)
         self.repeats = 100
@@ -43,7 +45,7 @@ class DBManager:
 
             self.logger.info(f"{self.symbol} connecting to {self.name}...\n")
             self.connection = connect(
-                user="root", host="127.0.0.1"
+                user="root", host="127.0.0.1", password=self.password
             )
             self.cursor = self.connection.cursor()
 
