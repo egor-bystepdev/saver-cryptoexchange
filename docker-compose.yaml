@@ -4,7 +4,10 @@ services:
   app:
     build:
       context: .
-      dockerfile:  Dockerfile
+      args:
+        extra_hosts:
+          "${data_base_ip}"
+    image: annabogacheva/crypto_api:latest
     restart: unless-stopped
     container_name: oh_no
     ports:
@@ -15,6 +18,7 @@ services:
       binance_api_secret: "${binance_api_secret}"
       ftx_api_key: "${ftx_api_key}"
       ftx_api_secret: "${ftx_api_secret}"
+      data_base_ip: "${data_base_ip}"
 
   prometheus:
     image: prom/prometheus:latest
