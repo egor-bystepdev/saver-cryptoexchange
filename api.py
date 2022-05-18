@@ -5,7 +5,7 @@ import uvicorn
 from fastapi import FastAPI, status
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
-from prometheus_client import start_http_server, Counter, Histogram
+from prometheus_client import start_http_server, Counter, Gauge
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from listener import listener_manager
@@ -13,9 +13,13 @@ from listener.utils.helpers import handle_error, create_logger
 
 api_logger = create_logger("API", default_api=True)
 graphs = {}
-graphs["counter"] = Counter(
-    "app_http_request_count", "The Total number of HTTP Application request"
+graphs["counter_get"] = Counter(
+    "app_http_request_count_get", "The Total number of HTTP Application request with get_all_messages"
 )
+graphs["counter_start"] = Counter(
+    "app_http_request_count_start", "The Total number of HTTP Application request with start (number of instruments)"
+)
+graphs["gauge"] = Gauge('response_api_time', 'api time response')
 
 exchange_data_types = {
     "binance": ["trade", "kline", "depthUpdate"],
@@ -40,7 +44,7 @@ instrumentator.instrument(CRYPTO_API).expose(CRYPTO_API)
 def get_events(
     exchange: str, instrument: str, start_timestamp: int, finish_timestamp: int
 ):
-    graphs["counter"].inc()
+    graphs["counter_get"].inc()
     start_time = time.time()
     if exchange not in exchanges:
         log_text = f"not available exchange {exchange}"
@@ -62,7 +66,7 @@ def get_events(
         tmp = "[" + event[1] + "]"
         res += json.loads(tmp)
     end_time = time.time()
-    graphs["histogram"].observe(end_time - start_time)
+    graphs["gauge"].set(end_time - start_time)
     print(graphs)
     return json.dumps(res)
 
@@ -74,8 +78,6 @@ def stop(exchange: str, instrument: str):
 
 @CRYPTO_API.get("/start")
 def start(exchange: str, instrument: str):
-    graphs["counter"].inc()
-    start_time = time.time()
     if exchange not in exchanges:
         log_text = f"not available exchange {exchange}"
         handle_error("get_events api method", log_text, api_logger)
@@ -84,8 +86,7 @@ def start(exchange: str, instrument: str):
     if not started:
         handle_error("start api method", log_text, api_logger)
         raise HTTPException(status_code=404, detail=log_text)
-    end_time = time.time()
-    graphs["histogram"].observe(end_time - start_time)
+    graphs["counter_start"].inc()
     print(graphs)
     return JSONResponse(status_code=status.HTTP_200_OK, content="Listening started")
 
