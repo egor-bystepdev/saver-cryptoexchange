@@ -61,7 +61,7 @@ def get_events(
     if log_text != "":
         handle_error("get_events api method", log_text, api_logger)
         graphs["counter_errors"].inc()
-        raise HTTPException(status_code=404, detail=log_text)
+        raise HTTPException(status_code=409, detail=log_text)
     res = []
     for event in events:
         tmp = "[" + event[1] + "]"
@@ -88,10 +88,10 @@ def start(exchange: str, instrument: str):
     if not started:
         graphs["counter_errors"].inc()
         handle_error("start api method", log_text, api_logger)
-        raise HTTPException(status_code=404, detail=log_text)
+        raise HTTPException(status_code=409, detail=log_text)
     graphs["counter_start"].inc()
     print(graphs)
-    return JSONResponse(status_code=status.HTTP_200_OK, content="Listening started")
+    return JSONResponse(status_code=status.HTTP_200_OK, content=log_text)
 
 
 @CRYPTO_API.on_event("startup")
