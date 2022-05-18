@@ -42,7 +42,7 @@ instrumentator.instrument(CRYPTO_API).expose(CRYPTO_API)
 
 @CRYPTO_API.get("/")
 def get_events(
-    exchange: str, instrument: str, start_timestamp: int, finish_timestamp: int
+        exchange: str, instrument: str, start_timestamp: int, finish_timestamp: int
 ):
     start_time = time.time()
     if exchange not in exchanges:
