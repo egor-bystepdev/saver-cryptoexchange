@@ -87,7 +87,7 @@ def start(exchange: str, instrument: str):
     end_time = time.time()
     graphs["histogram"].observe(end_time - start_time)
     print(graphs)
-    return JSONResponse(status_code=status.HTTP_200_OK, content="DB started")
+    return JSONResponse(status_code=status.HTTP_200_OK, content="Listening started")
 
 
 @CRYPTO_API.on_event("startup")
