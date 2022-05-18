@@ -9,16 +9,12 @@ from prometheus_client import start_http_server, Counter, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from listener import listener_manager
-from listener.utils.helpers import handle_error
+from listener.utils.helpers import handle_error, create_logger
 
+api_logger = create_logger("API", default_api=True)
 graphs = {}
 graphs["counter"] = Counter(
     "app_http_request_count", "The Total number of HTTP Application request"
-)
-graphs["histogram"] = Histogram(
-    "app_http_response_time",
-    "The time of HTTP Application response",
-    buckets=(1, 2, 5, 6, 10, float("inf")),  # Positive Infinity
 )
 
 exchange_data_types = {
@@ -48,7 +44,7 @@ def get_events(
     start_time = time.time()
     if exchange not in exchanges:
         log_text = f"not available exchange {exchange}"
-        handle_error("get_events api method", log_text, listener_db.logger)
+        handle_error("get_events api method", log_text, api_logger)
         raise HTTPException(status_code=404, detail=log_text)
     log_text, events = listener_db.get_all_messages(
         exchange,
@@ -59,7 +55,7 @@ def get_events(
         exchange_data_types[exchange],
     )
     if log_text != "":
-        handle_error("get_events api method", log_text, listener_db.logger)
+        handle_error("get_events api method", log_text, api_logger)
         raise HTTPException(status_code=404, detail=log_text)
     res = []
     for event in events:
@@ -82,11 +78,11 @@ def start(exchange: str, instrument: str):
     start_time = time.time()
     if exchange not in exchanges:
         log_text = f"not available exchange {exchange}"
-        handle_error("get_events api method", log_text, listener_db.logger)
+        handle_error("get_events api method", log_text, api_logger)
         raise HTTPException(status_code=404, detail=log_text)
     started, log_text = listener_db.start_listing(exchange=exchange, symbol=instrument)
     if not started:
-        handle_error("start api method", log_text, listener_db.logger)
+        handle_error("start api method", log_text, api_logger)
         raise HTTPException(status_code=404, detail=log_text)
     end_time = time.time()
     graphs["histogram"].observe(end_time - start_time)
