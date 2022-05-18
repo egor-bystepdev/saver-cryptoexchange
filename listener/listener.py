@@ -5,11 +5,11 @@ import sys
 import threading
 
 from binance import ThreadedWebsocketManager
-from listener.utils.storage_exception import StorageException
-from listener.utils.atomic_int import AtomicInt
-from listener.utils.helpers import *
-from listener.utils.db_manager import DBManager
-from listener.websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
+from utils.storage_exception import StorageException
+from utils.atomic_int import AtomicInt
+from utils.helpers import *
+from utils.db_manager import DBManager
+from websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
 
 data_types = {
     "binance":

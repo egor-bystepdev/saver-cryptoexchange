@@ -4,11 +4,11 @@
     "symbols_in_start" : 
     [   {
             "exchange" : "binance",
-            "symbol"   : "BTCUSDT"
+            "symbol"   : "BNBBTC"
         },
         {
             "exchange" : "ftx",
-            "symbol"   : "BTC-PERP"
+            "symbol"   : "BTC/USDT"
         }
     ]
 }

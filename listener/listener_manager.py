@@ -1,6 +1,6 @@
 from tabnanny import check
 from binance import ThreadedWebsocketManager
-from listener.websocketsftx.threaded_websocket_manager import (
+from websocketsftx.threaded_websocket_manager import (
     FTXThreadedWebsocketManager,
 )
 import os
@@ -9,11 +9,11 @@ import json
 
 from binance import ThreadedWebsocketManager
 
-from listener.listener import SocketStorage
-from listener.listener import data_types
-from listener.utils.helpers import *
-from listener.utils.db_manager import *
-from listener.utils.storage_exception import *
+from listener import SocketStorage
+from listener import data_types
+from utils.helpers import *
+from utils.db_manager import *
+from utils.storage_exception import *
 
 
 class ListenerManager:
@@ -222,6 +222,7 @@ class SocketChecker(threading.Thread):
                 socket.last_update.get_value() + self.timer < get_timestamp_ms_gtm0()
                 and not socket.stoped
             ):
+                print(socket.last_update.get_value())
                 self.manager.logger.info(socket.error.get_error())
 
                 self.manager.stop_listening("ftx", symbol)
