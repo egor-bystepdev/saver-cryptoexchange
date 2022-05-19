@@ -12,7 +12,9 @@ import sys
 sys.path.insert(0, 'listener/')
 
 from listener_manager import ListenerManager
-from utils.helpers import handle_error, create_logger
+from utils.helpers import handle_error, create_logger, check_environment
+
+check_environment()
 
 api_logger = create_logger("API", default_api=True)
 graphs = {}

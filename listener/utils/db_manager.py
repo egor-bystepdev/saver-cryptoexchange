@@ -44,7 +44,7 @@ class DBManager:
             self.update_name()
 
             self.logger.info(f"{self.symbol} connecting to {self.name}...\n")
-            if self.password == None:
+            if not self.password == None:
                 self.connection = connect(
                     user="root", host="127.0.0.1", password=self.password
                 )

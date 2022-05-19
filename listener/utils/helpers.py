@@ -37,3 +37,18 @@ def create_logger(name, exchange=None, symbol=None, folder="logs/", default_api=
     logger.addHandler(handler)
 
     return logger
+
+def check_environment():
+    def check_variable(name, fatal=True):
+        if name not in os.environ:
+            if fatal:
+                print(f"!!! ENV variable {name} must be set !!!")
+                exit(1)
+            else:
+                print(f"!!! Ensure that you don't have password on MySQL, otherwise set ENV variable {name} !!!")
+    
+    check_variable("binance_api_key")
+    check_variable("binance_api_secret")
+    check_variable("ftx_api_key")
+    check_variable("ftx_api_secret")
+    check_variable("sql_password", False)
