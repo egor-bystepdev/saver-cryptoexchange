@@ -15,6 +15,10 @@ Service that provides API for listening and collecting data for different instru
   - Also if and only if you have password for MySQL database (to check execute `sudo mysql -u root`, if no password field appear, skip that step) set ENV variable `sql_password` equals to it.
   - Optionally, adjust `listener/config.json` (it is responsible for instruments which start being listened immediately after API launch).
   - And finally, `python3 api.py` to run the API.
+  ### Using with docker-compose
+  - Put your API keys and secrets into environment variables `ftx_api_key`, `ftx_api_secret`, `binance_api_key` and `binance_api_secret`
+  - Also if and only if you have password for MySQL database (to check execute `sudo mysql -u root`, if no password field appear, skip that step) set ENV variable `sql_password` equals to it.
+  - Run "docker-compose up -d"
 
 ## Usage
   ### Get data and start/stop listening instruments
