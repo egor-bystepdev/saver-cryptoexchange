@@ -1,14 +1,14 @@
 {
-    "checker_cooldown_s" : 300,
-    "fatal_time_for_socket_s" : 180,
+    "checker_cooldown_s" : 600,
+    "fatal_time_for_socket_s" : 300000,
     "symbols_in_start" : 
     [   {
             "exchange" : "binance",
-            "symbol"   : "BTCUSDT"
+            "symbol"   : "BNBBTC"
         },
         {
             "exchange" : "ftx",
-            "symbol"   : "BTC-PERP"
+            "symbol"   : "BTC/USDT"
         }
     ]
 }

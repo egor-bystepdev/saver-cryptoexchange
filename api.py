@@ -8,8 +8,11 @@ from fastapi.responses import JSONResponse
 from prometheus_client import start_http_server, Counter, Gauge
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from listener import listener_manager
-from listener.utils.helpers import handle_error, create_logger
+import sys
+sys.path.insert(0, 'listener/')
+
+from listener_manager import ListenerManager
+from utils.helpers import handle_error, create_logger
 
 api_logger = create_logger("API", default_api=True)
 graphs = {}
@@ -28,7 +31,7 @@ exchange_data_types = {
 
 exchanges = {"binance", "ftx"}
 CRYPTO_API = FastAPI()
-listener_db = listener_manager.ListenerManager()
+listener_db = ListenerManager()
 
 instrumentator = Instrumentator(
     should_ignore_untemplated=True,
@@ -65,7 +68,7 @@ def get_events(
     res = []
     for event in events:
         tmp = "[" + event[1] + "]"
-        res += json.loads(tmp)
+        res += json.loads(tmp.replace('\\', ''))
     end_time = time.time()
     graphs["gauge"].set(end_time - start_time)
     print(graphs)

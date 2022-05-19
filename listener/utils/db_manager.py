@@ -4,7 +4,7 @@ import sys
 import threading
 
 from mysql.connector import connect, Error
-from listener.utils.helpers import handle_error, create_logger, format_table_name
+from utils.helpers import handle_error, create_logger, format_table_name
 
 
 class DBManager:
@@ -19,10 +19,11 @@ class DBManager:
         self.error = error
 
         self.lock = threading.Lock()
-        self.password = os.environ["sql_password"]
+        self.password = None
+        if "sql_password" in os.environ:
+            self.password = os.environ["sql_password"]
 
         self.logger = create_logger(f"DBManager ({number})", exchange, symbol)
-
         self.repeats = 100
         try:
             with open("listener/utils/config.json", "r") as f:
@@ -44,7 +45,7 @@ class DBManager:
 
             self.logger.info(f"{self.symbol} connecting to {self.name}...\n")
             self.connection = connect(
-                user="root", password=self.password, host="127.0.0.1"
+                user="root", host="127.0.0.1", password=self.password
             )
             self.cursor = self.connection.cursor()
 
@@ -116,6 +117,9 @@ class DBManager:
             finish_timestamp = timestamp2 + (time_bucket_db - timestamp2 % time_bucket_db)
 
             result = []
+
+            if self.cursor == None:
+                return []
             
             for data_type in data_types:
                 for timestamp in range(start_timestamp, finish_timestamp, time_bucket_db):
