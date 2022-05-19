@@ -1,19 +1,16 @@
 from tabnanny import check
-from binance import ThreadedWebsocketManager
-from listener.websocketsftx.threaded_websocket_manager import (
-    FTXThreadedWebsocketManager,
-)
 import os
 import threading
 import json
 
 from binance import ThreadedWebsocketManager
+from websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
 
-from listener.listener import SocketStorage
-from listener.listener import data_types
-from listener.utils.helpers import *
-from listener.utils.db_manager import *
-from listener.utils.storage_exception import *
+from listener import SocketStorage
+from listener import data_types
+from utils.helpers import *
+from utils.db_manager import *
+from utils.storage_exception import *
 
 class ListenerManager:
     def __init__(self) -> None:

@@ -5,11 +5,11 @@ import sys
 import threading
 
 from binance import ThreadedWebsocketManager
-from listener.utils.storage_exception import StorageException
-from listener.utils.atomic_int import AtomicInt
-from listener.utils.helpers import *
-from listener.utils.db_manager import DBManager
-from listener.websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
+from utils.storage_exception import StorageException
+from utils.atomic_int import AtomicInt
+from utils.helpers import *
+from utils.db_manager import DBManager
+from websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
 
 from prometheus_client import Gauge, Counter
 g = Gauge('my_responses_time', 'exchanges time response')
@@ -122,81 +122,3 @@ class SocketStorage:
 
     def get_all_messages(self, timestamp1: int, timestamp2: int, timestamp_in_ms: bool = False, data_types: list = []):
         return self.database.get_all_messages(self.time_bucket_db, timestamp1, timestamp2, timestamp_in_ms, data_types)
-
-
-def main():
-    logger = create_logger("Listener")
-
-    symbol = "BNBBTC"
-    exchange = "binance"
-    if len(sys.argv) > 1:
-        symbol = sys.argv[1]
-    if len(sys.argv) > 2:
-        exchange = sys.argv[2]
-
-    logger.info(f"symbol : {symbol}")
-    logger.info(f"exchange : {exchange}\n")
-
-    api_key = os.environ[exchange + "_api_key"]
-    api_secret = os.environ[exchange + "_api_secret"]
-
-    storage = SocketStorage(exchange, symbol, data_types[exchange])
-
-    try:
-        if exchange == "binance":
-            twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
-            twm.start()
-
-            streams = [symbol.lower() + data_type for data_type in ["@trade", "@kline_1m", "@depth"]]
-            twm.start_multiplex_socket(
-                callback=storage.handle_socket_message,
-                streams=streams,
-            )
-
-            logger.info(f"listening {', '.join(streams)} from {exchange} exchange\n")
-            twm.join()
-        elif exchange == "ftx":
-            twm = FTXThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
-
-            # example code
-
-            twm.start(
-                callback=storage.ftx_msg_handler,
-                symbol=symbol,
-            )
-            logger.info(f"listening {', '.join(data_types[exchange])} from {exchange} exchange for symbol ({symbol})\n")
-
-            time.sleep(10)
-
-            twm.start(
-                callback=storage.ftx_msg_handler,
-                symbol="BTC-PERP"
-            )
-            logger.info(f"listening {', '.join(data_types[exchange])} from {exchange} exchange for symbol (BTC-PERP)\n")
-
-            time.sleep(7)
-
-            twm.stop("BTC-PERP")
-            logger.info(
-                f"stop listening {', '.join(data_types[exchange])} from {exchange} exchange for symbol (BTC-PERP)\n")
-
-            time.sleep(7)
-
-            twm.stop(symbol)
-            logger.info(
-                f"stop listening {', '.join(data_types[exchange])} from {exchange} exchange for symbol ({symbol})\n")
-
-            # after that moment process should terminate
-
-            twm.join()
-        else:
-            logger.error(f"No such exchange {exchange}")
-            sys.exit(1)
-    except Exception as err:
-        logger.error("TWM creation error")
-        logger.error(err)
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
