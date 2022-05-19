@@ -1,6 +1,6 @@
 from tabnanny import check
 from binance import ThreadedWebsocketManager
-from websocketsftx.threaded_websocket_manager import (
+from listener.websocketsftx.threaded_websocket_manager import (
     FTXThreadedWebsocketManager,
 )
 import os
@@ -9,11 +9,11 @@ import json
 
 from binance import ThreadedWebsocketManager
 
-from listener import SocketStorage
-from listener import data_types
-from utils.helpers import *
-from utils.db_manager import *
-from utils.storage_exception import *
+from listener.listener import SocketStorage
+from listener.listener import data_types
+from listener.utils.helpers import *
+from listener.utils.db_manager import *
+from listener.utils.storage_exception import *
 
 class ListenerManager:
     def __init__(self) -> None:
@@ -161,7 +161,7 @@ class ListenerManager:
                     db = DBManager(exchange, symbol, data_types[exchange], 1, err)
                     if not db.connect():
                         self.logger.info(err.error.get_error())
-                        return (False, "db_error")
+                        return ("db_error", [])
                     time_bucket_db = 3 * 60 * 60 * 1000
                 else:
                     db = storage.database
@@ -179,7 +179,7 @@ class ListenerManager:
                 )
         except Exception as err:
             handle_error("get_all_messages", err, self.logger)
-            return (False, str(err))
+            return (str(err), [])
 
 
 class SocketChecker(threading.Thread):

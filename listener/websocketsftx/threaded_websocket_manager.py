@@ -1,8 +1,8 @@
 import threading
 import time
 
-from utils.helpers import create_logger
-from websocketsftx.client import FtxWebsocketClient
+from listener.utils.helpers import create_logger
+from listener.websocketsftx.client import FtxWebsocketClient
 
 
 class FTXThreadedWebsocketManager:
