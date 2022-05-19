@@ -19,11 +19,13 @@ def handle_error(function_name, err, logger):
 def format_table_name(name):
     return name.replace('/', '_').replace('-', '_')
 
-def create_logger(name, exchange=None, symbol=None, folder="logs/"):
+def create_logger(name, exchange=None, symbol=None, folder="logs/", default_api=False):
+
     logger = log.getLogger(name)
     logger.propagate = False
-
     filename = "logs/ListenerManager.log"
+    if default_api:
+        filename = "logs/API.log"
     if exchange != None:
         filename = f"{folder}{exchange}_{format_table_name(symbol)}.log"
     handler = log.FileHandler(filename)

@@ -11,6 +11,10 @@ from utils.helpers import *
 from utils.db_manager import DBManager
 from websocketsftx.threaded_websocket_manager import FTXThreadedWebsocketManager
 
+from prometheus_client import Gauge, Counter
+g = Gauge('my_responses_time', 'exchanges time response')
+c = Counter("exchanges_notes_counter", "notes of exchanges")
+
 data_types = {
     "binance":
         [
@@ -100,7 +104,8 @@ class SocketStorage:
 
         self.logger.info(
             f"{self.type_of_data} -- receive time : {receive_time}, server time : {server_time}, current delta time : {receive_time - server_time}")
-
+        g.set(receive_time - server_time)
+        c.inc()
         if self.upd_table_time(server_time):
             self.upd_table_name()
             self.database.create_tables(self.current_time_for_table_name)

@@ -15,7 +15,6 @@ from utils.helpers import *
 from utils.db_manager import *
 from utils.storage_exception import *
 
-
 class ListenerManager:
     def __init__(self) -> None:
         with open("listener/config.json", "r") as fd:
