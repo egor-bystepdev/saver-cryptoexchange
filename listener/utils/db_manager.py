@@ -4,7 +4,7 @@ import sys
 import threading
 
 from mysql.connector import connect, Error
-from utils.helpers import handle_error, create_logger, format_table_name
+from listener.utils.helpers import handle_error, create_logger, format_table_name
 
 
 class DBManager:

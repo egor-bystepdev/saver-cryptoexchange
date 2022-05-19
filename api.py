@@ -7,12 +7,8 @@ from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 from prometheus_client import start_http_server, Counter, Gauge
 from prometheus_fastapi_instrumentator import Instrumentator
-
-import sys
-sys.path.insert(0, 'listener/')
-
-from listener_manager import ListenerManager
-from utils.helpers import handle_error, create_logger
+from listener.listener_manager import ListenerManager
+from listener.utils.helpers import handle_error, create_logger
 
 api_logger = create_logger("API", default_api=True)
 graphs = {}
@@ -47,6 +43,9 @@ instrumentator.instrument(CRYPTO_API).expose(CRYPTO_API)
 def get_events(
         exchange: str, instrument: str, start_timestamp: int, finish_timestamp: int
 ):
+    api_logger.info(
+        f"get_event with exchange {exchange} with intrument {instrument} with start_timestamp"
+        f" {start_timestamp} with finish_timestamp {start_timestamp}")
     start_time = time.time()
     if exchange not in exchanges:
         log_text = f"not available exchange {exchange}"
@@ -71,17 +70,30 @@ def get_events(
         res += json.loads(tmp.replace('\\', ''))
     end_time = time.time()
     graphs["gauge"].set(end_time - start_time)
-    print(graphs)
     return json.dumps(res)
 
 
 @CRYPTO_API.get("/stop")
 def stop(exchange: str, instrument: str):
-    pass
+    api_logger.info(
+        f"stop with exchange {exchange} with intrument {instrument}")
+    if exchange not in exchanges:
+        log_text = f"not available exchange {exchange}"
+        handle_error("get_events api method", log_text, api_logger)
+        graphs["counter_errors"].inc()
+        raise HTTPException(status_code=404, detail=log_text)
+    started, log_text = listener_db.stop_listening(exchange=exchange, symbol=instrument)
+    if not started:
+        graphs["counter_errors"].inc()
+        handle_error("start api method", log_text, api_logger)
+        raise HTTPException(status_code=409, detail=log_text)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=log_text)
 
 
 @CRYPTO_API.get("/start")
 def start(exchange: str, instrument: str):
+    api_logger.info(
+        f"start with exchange {exchange} with intrument {instrument}")
     if exchange not in exchanges:
         log_text = f"not available exchange {exchange}"
         handle_error("get_events api method", log_text, api_logger)
@@ -93,12 +105,12 @@ def start(exchange: str, instrument: str):
         handle_error("start api method", log_text, api_logger)
         raise HTTPException(status_code=409, detail=log_text)
     graphs["counter_start"].inc()
-    print(graphs)
     return JSONResponse(status_code=status.HTTP_200_OK, content=log_text)
 
 
 @CRYPTO_API.on_event("startup")
 def startup_event():
+    api_logger.info("API started")
     start_http_server(port=9090)
 
 

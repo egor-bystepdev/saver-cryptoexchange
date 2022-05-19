@@ -9,7 +9,7 @@ services:
           "${data_base_ip}"
     image: annabogacheva/crypto_api:latest
     restart: unless-stopped
-    container_name: oh_no
+    container_name: api
     ports:
       - 8080:8080
     environment:
