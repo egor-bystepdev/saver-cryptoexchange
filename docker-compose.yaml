@@ -21,8 +21,6 @@ services:
     image: prom/prometheus:latest
     restart: unless-stopped
     network_mode: "host"
-    ports:
-      - 9091:9091
     volumes:
       - ./prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml
     command:
