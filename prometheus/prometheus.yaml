@@ -14,7 +14,7 @@ scrape_configs:
 
   - job_name: "app"
     dns_sd_configs:
-      - names: ["app"]
-        port: 8080
+      - names: ["localhost"]
+        port: 9091
         type: A
         refresh_interval: 5s
