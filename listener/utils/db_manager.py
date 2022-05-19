@@ -44,9 +44,14 @@ class DBManager:
             self.update_name()
 
             self.logger.info(f"{self.symbol} connecting to {self.name}...\n")
-            self.connection = connect(
-                user="root", host="127.0.0.1", password=self.password
-            )
+            if self.password == None:
+                self.connection = connect(
+                    user="root", host="127.0.0.1", password=self.password
+                )
+            else:
+                self.connection = connect(
+                    user="root", host="127.0.0.1"
+                )
             self.cursor = self.connection.cursor()
 
             self.cursor.execute("CREATE DATABASE IF NOT EXISTS " + self.name)
