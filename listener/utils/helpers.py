@@ -1,5 +1,6 @@
 import logging as log
 import time
+import os
 
 import dateutil.parser
 
@@ -20,6 +21,8 @@ def format_table_name(name):
     return name.replace('/', '_').replace('-', '_')
 
 def create_logger(name, exchange=None, symbol=None, folder="logs/", default_api=False):
+    if not os.path.exists("logs/"):
+        os.makedirs("logs/")
 
     logger = log.getLogger(name)
     logger.propagate = False
