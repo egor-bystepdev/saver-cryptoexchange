@@ -1,5 +1,5 @@
 FROM ubuntu:20.04
-FROM python:latest
+FROM python:3.8-slim-buster
 ARG sql_password
 ENV sql_password=$sql_password
 ARG binance_api_key

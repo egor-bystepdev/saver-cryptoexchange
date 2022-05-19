@@ -117,7 +117,7 @@ def start(exchange: str, instrument: str):
 @CRYPTO_API.on_event("startup")
 def startup_event():
     api_logger.info("API started")
-    start_http_server(port=9090)
+    start_http_server(port=9091)
 
 
 if __name__ == "__main__":
