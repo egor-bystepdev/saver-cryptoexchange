@@ -1,0 +1,44 @@
+name: Python application
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: sqlpass
+          MYSQL_DATABASE: mysql
+        ports: ['3306:3306']
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.8"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install -r requirements.txt
+    - name: Test
+      env:
+        binance_api_key: ${{ secrets.BINANCE_API_KEY }}
+        binance_api_secret: ${{ secrets.BINANCE_API_SECRET }}
+        ftx_api_key: ${{ secrets.FTX_API_KEY }}
+        ftx_api_secret: ${{ secrets.FTX_API_SECRET }}
+        sql_password: 'sqlpass'
+      run: |
+        python api.py &
+        sleep 5
+        pytest
+
