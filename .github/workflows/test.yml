@@ -33,7 +33,9 @@ jobs:
         ftx_api_key: ${{ secrets.ftx_api_key }}
         ftx_api_secret: ${{ secrets.ftx_api_secret }}
       run: |
-        python api.py
+        python api.py &
         sleep 5
         pytest
+        sleep 5
+        kill -9 %1
 
