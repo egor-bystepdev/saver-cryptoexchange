@@ -131,6 +131,11 @@ class DBManager:
                     table_name = "_".join([data_type, str(timestamp)])
 
                     with self.lock:
+                        exists_query = f"SHOW TABLES LIKE '{table_name}'"
+                        self.cursor.execute(exists_query)
+                        cnt = len(self.cursor.fetchall())
+                        if (cnt == 0):
+                            continue
                         query = f"SELECT * FROM {table_name} WHERE timestamp >= {timestamp1} AND timestamp <= {timestamp2};"
                         self.logger.info(f"QUERY: {query}")
 
