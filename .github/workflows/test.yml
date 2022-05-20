@@ -22,7 +22,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest
         pip install -r requirements.txt
+    - name: Install MySQL
+      run: |
+        sudo apt update
+        sudo apt install mysql-server
     - name: Test
+      env:
+        binance_api_key: ${{ secrets.binance_api_key }}
+        binance_api_secret: ${{ secrets.binance_api_secret }}
+        ftx_api_key: ${{ secrets.ftx_api_key }}
+        ftx_api_secret: ${{ secrets.ftx_api_secret }}
       run: |
         python api.py
         sleep 5
