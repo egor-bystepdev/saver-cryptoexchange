@@ -20,7 +20,7 @@ def handle_error(function_name, err, logger):
 def format_table_name(name):
     return name.replace('/', '_').replace('-', '_')
 
-def create_logger(name, exchange=None, symbol=None, folder="logs/", default_api=False):
+def create_logger(name, exchange=None, symbol=None, folder="logs", default_api=False):
     if not os.path.exists("logs/"):
         os.makedirs("logs/")
 
@@ -30,7 +30,17 @@ def create_logger(name, exchange=None, symbol=None, folder="logs/", default_api=
     if default_api:
         filename = "logs/API.log"
     if exchange != None:
-        filename = f"{folder}{exchange}_{format_table_name(symbol)}.log"
+        dirname = f"{folder}/{exchange}/{format_table_name(symbol)}"
+        if not os.path.exists(f"{folder}/{exchange}"):
+            print("created 1")
+            os.makedirs(f"{folder}/{exchange}")
+        if not os.path.exists(dirname):
+            print("created 2")
+            os.makedirs(dirname)
+        print('dirname', dirname)
+        print("created 3")
+        filename = f"{dirname}/{name.split()[0]}.log"
+        print('filename', filename)
     handler = log.FileHandler(filename)
     handler.setFormatter(log.Formatter("[" + name + " %(levelname)s]: {%(asctime)s} %(message)s"))
 
