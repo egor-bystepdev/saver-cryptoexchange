@@ -113,7 +113,6 @@ def start(exchange: str, instrument: str):
     graphs["counter_start"].inc()
     return JSONResponse(status_code=status.HTTP_200_OK, content=log_text)
 
-
 @CRYPTO_API.on_event("startup")
 def startup_event():
     api_logger.info("API started")
