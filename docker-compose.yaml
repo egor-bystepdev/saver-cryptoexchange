@@ -5,7 +5,6 @@ services:
     build:
       context: .
     image: annabogacheva/crypto_api:latest
-    restart: unless-stopped
     container_name: api
     network_mode: "host"
     ports:
@@ -19,7 +18,6 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
-    restart: unless-stopped
     network_mode: "host"
     volumes:
       - ./prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml
